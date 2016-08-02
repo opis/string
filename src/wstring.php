@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * Class wstring
+ */
 final class wstring implements ArrayAccess
 {
     /** @var array  */
@@ -18,21 +21,38 @@ final class wstring implements ArrayAccess
         $this->length = count($codes);
     }
 
+    /**
+     * @param mixed $offset
+     * @return bool
+     */
     public function offsetExists($offset)
     {
         return isset($this->codes[$offset]);
     }
 
+    /**
+     * @param mixed $offset
+     * @return string
+     */
     public function offsetGet($offset)
     {
         return $this->chars[$offset];
     }
 
+    /**
+     * @param mixed $offset
+     * @param mixed $value
+     * @throws Exception
+     */
     public function offsetSet($offset, $value)
     {
         throw new Exception("Invalid operation");
     }
 
+    /**
+     * @param mixed $offset
+     * @throws Exception
+     */
     public function offsetUnset($offset)
     {
         throw new Exception("Invalid operation");
