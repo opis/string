@@ -244,6 +244,32 @@ final class wstring implements ArrayAccess
     }
 
     /**
+     * @param wstring|string $text
+     * @return wstring
+     */
+    public function append($text)
+    {
+        $text = wstring($text);
+        $cp = array_merge($this->codes, $text->codes);
+        $ch = array_merge($this->chars, $text->chars);
+
+        return new self($cp, $ch);
+    }
+
+    /**
+     * @param wstring|string $text
+     * @return wstring
+     */
+    public function prepend($text)
+    {
+        $text = wstring($text);
+        $cp = array_merge($text->codes, $this->codes);
+        $ch = array_merge($text->chars, $this->chars);
+
+        return new self($cp, $ch);
+    }
+
+    /**
      * @param string|wstring $character_mask
      * @return wstring
      */
