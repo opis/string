@@ -168,6 +168,65 @@ final class wstring implements ArrayAccess
     }
 
     /**
+     * @param string|wstring $subject
+     * @param string|wstring $replace
+     * @return wstring
+     */
+    public function replaceAll($subject, $replace)
+    {
+        $subject = wstring($subject);
+        $replace = wstring($replace);
+
+        if(false === $offset = $this->indexOf($subject) || $subject->isEmpty()){
+            return clone $this;
+        }
+
+        $text = $this;
+
+        do{
+            $text = $text->replace($subject, $replace, $offset);
+            $offset = $text->indexOf($subject, $offset + $replace->length);
+        } while($offset !== false);
+
+        return $text;
+    }
+
+    /**
+     * @param string|wstring $char
+     * @return array
+     */
+    public function split($char = ' ')
+    {
+        $char = wstring($char);
+        $results = array();
+
+        if($char->isEmpty()){
+            for($i = 0, $l = $this->length; $i < $l; $i++){
+                $results[] = new self(array($this->codes[$i]), array($this->chars[$i]));
+            }
+            return $results;
+        }
+
+        if(false === $offset = $this->indexOf($char)){
+            return array(clone $this);
+        }
+
+        $start = 0;
+        do{
+            $cp = array_slice($this->codes, $start, $offset - $start);
+            $ch = array_slice($this->chars, $start, $offset - $start);
+            $results[] = new self($cp, $ch);
+            $start = $offset + $char->length;
+            $offset = $this->indexOf($char, $start);
+        } while ($offset !== false);
+
+        $cp = array_slice($this->codes, $start);
+        $ch = array_slice($this->chars, $start);
+        $results[] = new self($cp, $ch);
+        return $results;
+    }
+
+    /**
      * @return wstring
      */
     public function toLower()
