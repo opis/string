@@ -55,15 +55,25 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param int $start
-     * @param int|null $length
-     * @return wstring
+     * @param string|wstring $text
+     * @return bool
      */
-    public function substr($start, $length = null)
+    public function equals($text)
     {
-        return $this->substring($start, $length);
-    }
+        $text = wstring($text);
 
+        if($this->length !== $text->length){
+            return false;
+        }
+
+        for($i = 0, $l = $this->length; $i < $l; $i++){
+            if($this->codes[$i] !== $text->codes[$i]){
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /**
      * @param int $start
@@ -76,6 +86,41 @@ final class wstring implements ArrayAccess
         $ch = array_slice($this->chars, $start, $length);
 
         return new self($cp, $ch);
+    }
+
+    /**
+     * @param string|wstring $text
+     * @return bool
+     */
+    public function contains($text)
+    {
+        return $this->indexOf($text) !== false;
+    }
+
+    /**
+     * @param string|wstring $text
+     * @return bool
+     */
+    public function startsWith($text)
+    {
+        return $this->indexOf($text) === 0;
+    }
+
+    /**
+     * @param string|wstring $text
+     * @return bool
+     */
+    public function endsWith($text)
+    {
+        $text = wstring($text);
+
+        $offset = $this->length - $text->length;
+
+        if($offset < 0){
+            return false;
+        }
+
+        return $this->indexOf($text, $offset) === $offset;
     }
 
     /**
@@ -111,6 +156,27 @@ final class wstring implements ArrayAccess
         }
 
         return false;
+    }
+
+    /**
+     * @param wstring|string $text
+     * @return false|int
+     */
+    public function lastIndexOf($text)
+    {
+        $text = wstring($text);
+        $index = false;
+        $offset = 0;
+
+        while(true){
+            if(false === $offset = $this->indexOf($text, $offset)){
+                break;
+            }
+            $index = $offset;
+            $offset += $text->length;
+        }
+
+        return $index;
     }
 
     /**
