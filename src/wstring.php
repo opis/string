@@ -168,6 +168,34 @@ final class wstring implements ArrayAccess
     }
 
     /**
+     * @return wstring
+     */
+    public function toLower()
+    {
+        static $lower;
+
+        if($lower === null){
+            $lower = require __DIR__ . '/../res/lower.php';
+        }
+
+        return $this->toCase($lower);
+    }
+
+    /**
+     * @return wstring
+     */
+    public function toUpper()
+    {
+        static $upper;
+
+        if($upper === null){
+            $upper = require __DIR__ . '/../res/upper.php';
+        }
+
+        return $this->toCase($upper);
+    }
+
+    /**
      * @return string
      */
     public function __toString()
@@ -218,6 +246,33 @@ final class wstring implements ArrayAccess
 
         return new self($cp, $ch);
     }
+
+    /**
+     * @param array $map
+     * @return wstring
+     */
+    protected function toCase(array $map)
+    {
+        $cp = $this->codes;
+        $ch = $this->chars;
+        $ocp = $och = array();
+
+        for($i = 0, $l = $this->length; $i < $l; $i++){
+            $p = $cp[$i];
+            if(isset($map[$p])){
+                $v = $map[$p];
+                $ocp[] = $v[0];
+                $och[] = $v[1];
+            } else {
+                $ocp[] = $p;
+                $och[] = $ch[$i];
+            }
+        }
+
+        return new self($ocp, $och);
+    }
+
+
 }
 
 /**
