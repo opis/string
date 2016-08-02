@@ -1,0 +1,21 @@
+{
+    "name": "opis/wstring",
+    "description": "A library for working with UTF-8 strings",
+    "keywords": ["opis", "string", "utf-8", "multi-byte"],
+    "homepage": "http://opis.io",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Marius Sarca",
+            "email": "marius.sarca@gmail.com"
+        }
+    ],
+    "autoload": {
+        "files": ["src/wstring.php"]
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0.x-dev"
+        }
+    }
+}
