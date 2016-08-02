@@ -321,6 +321,15 @@ final class wstring implements ArrayAccess
     }
 
     /**
+     * @param int $offset
+     * @return int
+     */
+    public function __invoke($offset)
+    {
+        return $this->codes[$offset];
+    }
+
+    /**
      * @return string
      */
     public function __toString()
