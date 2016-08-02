@@ -76,14 +76,19 @@ final class wstring implements ArrayAccess
 
     /**
      * @param string|wstring $text
+     * @param bool $ignoreCase
      * @return bool
      */
-    public function equals($text)
+    public function equals($text, $ignoreCase = false)
     {
         $text = wstring($text);
 
         if($this->length !== $text->length){
             return false;
+        }
+
+        if($ignoreCase){
+            return $this->toLower()->equals($text->toLower());
         }
 
         for($i = 0, $l = $this->length; $i < $l; $i++){
@@ -93,6 +98,27 @@ final class wstring implements ArrayAccess
         }
 
         return true;
+    }
+
+    /**
+     * @param string|wstring $text
+     * @return int
+     */
+    public function compareTo($text)
+    {
+        $text = wstring($text);
+
+        if($this->length !== $text->length){
+            return $this->length > $text->length ? 1 : -1;
+        }
+
+        for($i = 0, $l = $this->length; $i < $l; $i++){
+            if($this->codes[$i] !== $text->codes[$i]){
+                return $this->codes[$i] > $text->codes[$i] ? 1 : -1;
+            }
+        }
+
+        return 0;
     }
 
     /**
