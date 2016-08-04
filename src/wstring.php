@@ -398,6 +398,30 @@ final class wstring implements ArrayAccess
     }
 
     /**
+     * @return bool
+     */
+    public function isLowerCase()
+    {
+        if(static::$upper === null){
+            static::$upper = require __DIR__ . '/../res/upper.php';
+        }
+
+        return $this->isCase(static::$upper);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isUpperCase()
+    {
+        if(static::$lower === null){
+            static::$lower = require __DIR__ . '/../res/lower.php';
+        }
+
+        return $this->isCase(static::$lower);
+    }
+
+    /**
      * @return wstring
      */
     public function toLower()
@@ -505,6 +529,20 @@ final class wstring implements ArrayAccess
         }
 
         return new self($ocp, $och);
+    }
+
+    /**
+     * @param array $map
+     * @return bool
+     */
+    protected function isCase(array $map)
+    {
+        foreach ($this->codes as $cp){
+            if(isset($map[$cp])){
+                return false;
+            }
+        }
+        return true;
     }
 
 
