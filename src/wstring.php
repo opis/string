@@ -167,41 +167,31 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param int $start
-     * @param int|null $length
-     * @return wstring
+     * @param string|wstring $text
+     * @param bool $ignoreCase
+     * @return bool
      */
-    public function substring($start, $length = null)
+    public function contains($text, $ignoreCase = false)
     {
-        $cp = array_slice($this->codes, $start, $length);
-        $ch = array_slice($this->chars, $start, $length);
-
-        return new self($cp, $ch);
+        return $this->indexOf($text, 0, $ignoreCase) !== false;
     }
 
     /**
      * @param string|wstring $text
+     * @param bool $ignoreCase
      * @return bool
      */
-    public function contains($text)
+    public function startsWith($text, $ignoreCase = false)
     {
-        return $this->indexOf($text) !== false;
+        return $this->indexOf($text, 0, $ignoreCase) === 0;
     }
 
     /**
      * @param string|wstring $text
+     * @param bool $ignoreCase
      * @return bool
      */
-    public function startsWith($text)
-    {
-        return $this->indexOf($text) === 0;
-    }
-
-    /**
-     * @param string|wstring $text
-     * @return bool
-     */
-    public function endsWith($text)
+    public function endsWith($text, $ignoreCase = false)
     {
         $text = wstring($text);
 
@@ -211,18 +201,23 @@ final class wstring implements ArrayAccess
             return false;
         }
 
-        return $this->indexOf($text, $offset) === $offset;
+        return $this->indexOf($text, $offset, $ignoreCase) === $offset;
     }
 
     /**
      * @param string|wstring $text
      * @param int $offset
+     * @param bool $ignoreCase
      * @return int|false
      * @throws Exception
      */
-    public function indexOf($text, $offset = 0)
+    public function indexOf($text, $offset = 0, $ignoreCase = false)
     {
         $text = wstring($text);
+
+        if($ignoreCase){
+            return $this->toLower()->indexOf($text->toLower(), $offset);
+        }
 
         if($offset < 0){
             $offset = 0;
@@ -251,11 +246,17 @@ final class wstring implements ArrayAccess
 
     /**
      * @param wstring|string $text
+     * @param bool $ignoreCase
      * @return false|int
      */
-    public function lastIndexOf($text)
+    public function lastIndexOf($text, $ignoreCase = false)
     {
         $text = wstring($text);
+
+        if($ignoreCase){
+            return $this->toLower()->lastIndexOf($text->toLower());
+        }
+
         $index = false;
         $offset = 0;
 
@@ -268,6 +269,19 @@ final class wstring implements ArrayAccess
         }
 
         return $index;
+    }
+
+    /**
+     * @param int $start
+     * @param int|null $length
+     * @return wstring
+     */
+    public function substring($start, $length = null)
+    {
+        $cp = array_slice($this->codes, $start, $length);
+        $ch = array_slice($this->chars, $start, $length);
+
+        return new self($cp, $ch);
     }
 
     /**
