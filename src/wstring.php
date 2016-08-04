@@ -83,6 +83,22 @@ final class wstring implements ArrayAccess
     }
 
     /**
+     * @return array
+     */
+    public function chars()
+    {
+        return $this->chars;
+    }
+
+    /**
+     * @return array
+     */
+    public function codePoints()
+    {
+        return $this->codes;
+    }
+
+    /**
      * @return int
      */
     public function length()
