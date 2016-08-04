@@ -1,7 +1,7 @@
 {
     "name": "opis/wstring",
-    "description": "A library for working with UTF-8 strings",
-    "keywords": ["opis", "string", "utf-8", "multi-byte"],
+    "description": "A standalone library for manipulating UTF-8 strings",
+    "keywords": ["opis", "string", "utf-8", "multi-byte", "string manipulation"],
     "homepage": "http://opis.io",
     "license": "Apache-2.0",
     "authors": [
