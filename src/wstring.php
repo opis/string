@@ -124,11 +124,16 @@ final class wstring implements ArrayAccess
 
     /**
      * @param string|wstring $text
+     * @param bool $ignoreCase
      * @return int
      */
-    public function compareTo($text)
+    public function compareTo($text, $ignoreCase = false)
     {
         $text = wstring($text);
+
+        if($ignoreCase){
+            return $this->toLower()->compareTo($text->toLower());
+        }
 
         if($this->length !== $text->length){
             return $this->length > $text->length ? 1 : -1;
