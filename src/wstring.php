@@ -31,6 +31,10 @@ final class wstring implements ArrayAccess
     protected $string;
     /** @var int */
     protected $length;
+    /** @var  array */
+    protected static $upper;
+    /** @var  array */
+    protected static $lower;
 
     public function __construct(array $codes, array $chars)
     {
@@ -348,6 +352,17 @@ final class wstring implements ArrayAccess
     }
 
     /**
+     * @return wstring
+     */
+    public function reverse()
+    {
+        $cp = array_reverse($this->codes);
+        $ch = array_reverse($this->chars);
+
+        return new self($cp, $ch);
+    }
+
+    /**
      * @param string|wstring $char
      * @return array
      */
@@ -387,13 +402,11 @@ final class wstring implements ArrayAccess
      */
     public function toLower()
     {
-        static $lower;
-
-        if($lower === null){
-            $lower = require __DIR__ . '/../res/lower.php';
+        if(static::$lower === null){
+            static::$lower = require __DIR__ . '/../res/lower.php';
         }
 
-        return $this->toCase($lower);
+        return $this->toCase(static::$lower);
     }
 
     /**
@@ -401,13 +414,11 @@ final class wstring implements ArrayAccess
      */
     public function toUpper()
     {
-        static $upper;
-
-        if($upper === null){
-            $upper = require __DIR__ . '/../res/upper.php';
+        if(static::$upper === null){
+            static::$upper = require __DIR__ . '/../res/upper.php';
         }
 
-        return $this->toCase($upper);
+        return $this->toCase(static::$upper);
     }
 
     /**
