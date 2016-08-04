@@ -137,4 +137,46 @@ class WStringTest extends TestCase
     {
         $this->assertEquals("fedcba", (string) wstring("abcdef")->reverse());
     }
+
+    public function testSplit()
+    {
+        $map = function($value){
+            return (string) $value;
+        };
+        $split = function($text, $char = ' ') use($map){
+            return array_map($map, wstring($text)->split($char));
+        };
+
+        $this->assertEquals(array('a', 'b', 'c'), $split('a b c'));
+        $this->assertEquals(array('', 'a', 'b', 'c'), $split(' a b c'));
+        $this->assertEquals(array('', 'a', 'b', 'c', '', ''), $split(' a b c  '));
+        $this->assertEquals(array(' a b c', ''), $split(' a b c  ', '  '));
+        $this->assertEquals(array('a b c'), $split('a b c', '#'));
+        $this->assertEquals(array('a', 'b', 'c'), $split('abc', ''));
+    }
+
+    public function testSubstring()
+    {
+        $this->assertEquals('abc', wstring('abcdef')->substring(0, 3));
+        $this->assertEquals('def', wstring('abcdef')->substring(3, 3));
+        $this->assertEquals('def', wstring('abcdef')->substring(3));
+        $this->assertEquals('abcdef', wstring('abcdef')->substring(0));
+    }
+
+    public function testIsCase()
+    {
+        $this->assertTrue(wstring('abcd')->isLowerCase());
+        $this->assertFalse(wstring('abCd')->isLowerCase());
+        $this->assertTrue(wstring('ABCD')->isUpperCase());
+        $this->assertFalse(wstring('ABcD')->isUpperCase());
+    }
+
+    public function testToCase()
+    {
+        $this->assertEquals('ABC', wstring('abc')->toUpper());
+        $this->assertEquals('ABC', wstring('aBc')->toUpper());
+        $this->assertEquals('abc', wstring('ABC')->toLower());
+        $this->assertEquals('abc', wstring('AbC')->toLower());
+    }
+
 }
