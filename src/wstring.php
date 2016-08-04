@@ -25,16 +25,18 @@ final class wstring implements ArrayAccess
 {
     /** @var array  */
     protected $codes;
+
     /** @var array  */
     protected $chars;
+
     /** @var string|null */
     protected $string;
+
     /** @var int */
     protected $length;
-    /** @var  array */
-    protected static $upper;
-    /** @var  array */
-    protected static $lower;
+
+    /** @var array */
+    protected $cache = array();
 
     public function __construct(array $codes, array $chars)
     {
@@ -407,11 +409,7 @@ final class wstring implements ArrayAccess
      */
     public function isLowerCase()
     {
-        if(static::$upper === null){
-            static::$upper = require __DIR__ . '/../res/upper.php';
-        }
-
-        return $this->isCase(static::$upper);
+        return $this->isCase($this->getUpperMap());
     }
 
     /**
@@ -419,11 +417,7 @@ final class wstring implements ArrayAccess
      */
     public function isUpperCase()
     {
-        if(static::$lower === null){
-            static::$lower = require __DIR__ . '/../res/lower.php';
-        }
-
-        return $this->isCase(static::$lower);
+        return $this->isCase($this->getLowerMap());
     }
 
     /**
@@ -431,11 +425,7 @@ final class wstring implements ArrayAccess
      */
     public function toLower()
     {
-        if(static::$lower === null){
-            static::$lower = require __DIR__ . '/../res/lower.php';
-        }
-
-        return $this->toCase(static::$lower);
+        return $this->toCase($this->getLowerMap());
     }
 
     /**
@@ -443,11 +433,7 @@ final class wstring implements ArrayAccess
      */
     public function toUpper()
     {
-        if(static::$upper === null){
-            static::$upper = require __DIR__ . '/../res/upper.php';
-        }
-
-        return $this->toCase(static::$upper);
+        return $this->toCase($this->getUpperMap());
     }
 
     /**
@@ -548,6 +534,34 @@ final class wstring implements ArrayAccess
             }
         }
         return true;
+    }
+
+    /**
+     * @return array
+     */
+    protected function getUpperMap()
+    {
+        static $upper;
+
+        if($upper === null){
+            $upper = require __DIR__ . '/../res/upper.php';
+        }
+
+        return $upper;
+    }
+
+    /**
+     * @return array
+     */
+    protected function getLowerMap()
+    {
+        static $lower;
+
+        if($lower === null){
+            $lower = require __DIR__ . '/../res/lower.php';
+        }
+
+        return $lower;
     }
 
 
