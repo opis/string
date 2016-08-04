@@ -23,6 +23,14 @@
  */
 final class wstring implements ArrayAccess
 {
+    const CACHE_IS_LOWER = 0;
+
+    const CACHE_IS_UPPER = 1;
+
+    const CACHE_TO_LOWER = 2;
+
+    const CACHE_TO_UPPER = 3;
+
     /** @var array  */
     protected $codes;
 
@@ -439,7 +447,11 @@ final class wstring implements ArrayAccess
      */
     public function isLowerCase()
     {
-        return $this->isCase($this->getLowerMap());
+        if(!isset($this->cache[self::CACHE_IS_LOWER])){
+            $this->cache[self::CACHE_IS_LOWER] = $this->isCase($this->getLowerMap());
+        }
+
+        return $this->cache[self::CACHE_IS_LOWER];
     }
 
     /**
@@ -447,7 +459,11 @@ final class wstring implements ArrayAccess
      */
     public function isUpperCase()
     {
-        return $this->isCase($this->getUpperMap());
+        if(!isset($this->cache[self::CACHE_IS_UPPER])){
+            $this->cache[self::CACHE_IS_UPPER] = $this->isCase($this->getUpperMap());
+        }
+
+        return $this->cache[self::CACHE_IS_UPPER];
     }
 
     /**
@@ -455,7 +471,15 @@ final class wstring implements ArrayAccess
      */
     public function toLower()
     {
-        return $this->toCase($this->getLowerMap());
+        if(!isset($this->cache[self::CACHE_TO_LOWER])){
+            if(isset($this->cache[self::CACHE_IS_LOWER]) && $this->cache[self::CACHE_IS_LOWER]){
+                $this->cache[self::CACHE_TO_LOWER] = clone $this;
+            } else {
+                $this->cache[self::CACHE_TO_LOWER] = $this->toCase($this->getLowerMap(), self::CACHE_IS_LOWER);
+            }
+        }
+
+        return $this->cache[self::CACHE_TO_LOWER];
     }
 
     /**
@@ -463,7 +487,15 @@ final class wstring implements ArrayAccess
      */
     public function toUpper()
     {
-        return $this->toCase($this->getUpperMap());
+        if(!isset($this->cache[self::CACHE_TO_UPPER])){
+            if(isset($this->cache[self::CACHE_IS_UPPER]) && $this->cache[self::CACHE_IS_UPPER]){
+                $this->cache[self::CACHE_TO_UPPER] = clone $this;
+            } else {
+                $this->cache[self::CACHE_TO_UPPER] = $this->toCase($this->getUpperMap(), self::CACHE_IS_UPPER);
+            }
+        }
+
+        return $this->cache[self::CACHE_TO_UPPER];
     }
 
     /**
@@ -529,9 +561,10 @@ final class wstring implements ArrayAccess
 
     /**
      * @param array $map
+     * @param int $cacheKey
      * @return wstring
      */
-    protected function toCase(array $map)
+    protected function toCase(array $map, $cacheKey)
     {
         $cp = $this->codes;
         $ch = $this->chars;
@@ -549,7 +582,10 @@ final class wstring implements ArrayAccess
             }
         }
 
-        return new self($ocp, $och);
+        $str = new self($ocp, $och);
+        $str->cache[$cacheKey] = true;
+
+        return $str;
     }
 
     /**
