@@ -272,19 +272,6 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param int $start
-     * @param int|null $length
-     * @return wstring
-     */
-    public function substring($start, $length = null)
-    {
-        $cp = array_slice($this->codes, $start, $length);
-        $ch = array_slice($this->chars, $start, $length);
-
-        return new self($cp, $ch);
-    }
-
-    /**
      * @param wstring|string $text
      * @return wstring
      */
@@ -432,6 +419,19 @@ final class wstring implements ArrayAccess
         $ch = array_slice($this->chars, $start);
         $results[] = new self($cp, $ch);
         return $results;
+    }
+
+    /**
+     * @param int $start
+     * @param int|null $length
+     * @return wstring
+     */
+    public function substring($start, $length = null)
+    {
+        $cp = array_slice($this->codes, $start, $length);
+        $ch = array_slice($this->chars, $start, $length);
+
+        return new self($cp, $ch);
     }
 
     /**
