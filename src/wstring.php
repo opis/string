@@ -439,7 +439,7 @@ final class wstring implements ArrayAccess
      */
     public function isLowerCase()
     {
-        return $this->isCase($this->getUpperMap());
+        return $this->isCase($this->getLowerMap());
     }
 
     /**
@@ -447,7 +447,7 @@ final class wstring implements ArrayAccess
      */
     public function isUpperCase()
     {
-        return $this->isCase($this->getLowerMap());
+        return $this->isCase($this->getUpperMap());
     }
 
     /**
