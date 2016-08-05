@@ -27,6 +27,8 @@ if(!function_exists('wstring'))
      */
     function wstring($string)
     {
+        static $ord, $chr;
+
         if($string instanceof wstring){
             return $string;
         }
@@ -35,6 +37,11 @@ if(!function_exists('wstring'))
 
         if(false === $text = json_encode((string) $string)) {
             throw new Exception("Invalid UTF-8 string");
+        }
+
+        if($ord === null || $chr === null){
+            $ord = require __DIR__ .'/../res/ord.php';
+            $chr = require __DIR__ . '/../res/char.php';
         }
 
         for($i = 1, $l = strlen($text) - 1; $i < $l; $i++) {
@@ -48,14 +55,14 @@ if(!function_exists('wstring'))
                         $codes[] = $cp = hexdec(substr($text, $i, 6));
 
                         if ($cp < 0x80) {
-                            $chars[] = chr($cp);
+                            $chars[] = $chr[$cp];
                         } elseif ($cp <= 0x7FF) {
-                            $chars[] = chr(($cp >> 6) + 0xC0) . chr(($cp & 0x3F) + 0x80);
+                            $chars[] = $chr[($cp >> 6) + 0xC0] . $chr[($cp & 0x3F) + 0x80];
                         } elseif ($cp <= 0xFFFF) {
-                            $chars[] = chr(($cp >> 12) + 0xE0) . chr((($cp >> 6) & 0x3F) + 0x80) . chr(($cp & 0x3F) + 0x80);
+                            $chars[] = $chr[($cp >> 12) + 0xE0] . $chr[(($cp >> 6) & 0x3F) + 0x80] . $chr[($cp & 0x3F) + 0x80];
                         } elseif ($cp <= 0x10FFFF) {
-                            $chars[] = chr(($cp >> 18) + 0xF0) . chr((($cp >> 12) & 0x3F) + 0x80)
-                                . chr((($cp >> 6) & 0x3F) + 0x80) . chr(($cp & 0x3F) + 0x80);
+                            $chars[] = $chr[($cp >> 18) + 0xF0] . $chr[(($cp >> 12) & 0x3F) + 0x80]
+                                . $chr[(($cp >> 6) & 0x3F) + 0x80] . $chr[($cp & 0x3F) + 0x80];
                         } else {
                             throw new Exception("Invalid UTF-8");
                         }
@@ -100,7 +107,7 @@ if(!function_exists('wstring'))
                                 $c = $text[$i + 1];
                         }
 
-                        $codes[] = ord($c);
+                        $codes[] = $ord[$c];
                         $chars[] = $c;
                         $i++;
                         continue;
@@ -108,10 +115,10 @@ if(!function_exists('wstring'))
                 }
             }
 
-            $codes[] = ord($c);
+            $codes[] = $ord[$c];
             $chars[] = $c;
         }
 
-        return new wstring($codes, $chars, null);
+        return new wstring($codes, $chars);
     }
 }
