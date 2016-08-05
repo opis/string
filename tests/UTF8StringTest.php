@@ -25,6 +25,19 @@ use PHPUnit\Framework\TestCase;
 
 class UTF8StringTest extends TestCase
 {
+    public function testLength()
+    {
+        $this->assertEquals(10, wstring::from('ăĂâÂîÎşŞţŢ')->length());
+    }
+
+    public function testArrayAccess()
+    {
+        $str = wstring::from('ăĂâÂîÎşŞţŢ');
+        $this->assertEquals('ă', $str[0]);
+        $this->assertEquals('Ţ', $str[9]);
+        $this->assertEquals('Î', $str[5]);
+    }
+
     public function testEquals()
     {
         $this->assertTrue(wstring::from('abc')->equals('abc'));
