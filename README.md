@@ -42,8 +42,8 @@ use Opis\String\UnicodeString as wstring;
 $str = wstring::from('ăĂâÂîÎşŞţŢ');
 ```
 
-Once created, you can use the UTF-8 object in the same manner like you 
-would use a regular string
+Once created, you can use the UTF-8 object in the same manner in which 
+you would use a regular string.
 
 ```php
 echo $str; //> ăĂâÂîÎşŞţŢ
