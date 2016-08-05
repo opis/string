@@ -33,6 +33,10 @@ class UTF8String implements ArrayAccess
 
     const CACHE_TO_UPPER = 3;
 
+    const CACHE_IS_ASCII = 4;
+
+    const CACHE_TO_ASCII = 5;
+
     /** @var array  */
     protected $codes;
 
@@ -469,23 +473,60 @@ class UTF8String implements ArrayAccess
     }
 
     /**
+     * @return bool
+     */
+    public function isAscii()
+    {
+        if(!isset($this->cache[static::CACHE_IS_ASCII])){
+            foreach ($this->codes as $code){
+                if($code >= 0x80){
+                    return $this->cache[static::CACHE_IS_ASCII] = false;
+                }
+            }
+            return $this->cache[static::CACHE_IS_ASCII] = true;
+        }
+
+        return $this->cache[static::CACHE_IS_ASCII];
+    }
+
+    /**
      * @return UTF8String
      */
     public function toAscii()
     {
-        $ascii = $this->getAsciiMap();
-        $char = $this->getCharMap();
-        $ch = array();
-        $cp = array();
 
-        foreach ($this->codes as $code){
-            if(isset($ascii[$code])){
-                $cp[] = $c = $ascii[$code];
-                $ch[] = $char[$c];
+        if(!isset($this->cache[static::CACHE_TO_ASCII])){
+            if(isset($this->cache[static::CACHE_IS_ASCII]) && $this->cache[static::CACHE_IS_ASCII]){
+                $this->cache[static::CACHE_TO_ASCII] = clone $this;
+            } else {
+                $ascii = $this->getAsciiMap();
+                $char = $this->getCharMap();
+                $ch = array();
+                $cp = array();
+
+                foreach ($this->codes as $code){
+                    if(isset($ascii[$code])){
+                        $cp[] = $c = $ascii[$code];
+                        $ch[] = $char[$c];
+                    }
+                }
+
+                $instance = new static($cp, $ch);
+                $instance->cache[static::CACHE_IS_ASCII] = true;
+
+                $keys = array(static::CACHE_IS_UPPER, static::CACHE_IS_LOWER);
+
+                foreach ($keys as $key){
+                    if(isset($this->cache[$key])){
+                        $instance->cache[$key] = $this->cache[$key];
+                    }
+                }
+
+                $this->cache[static::CACHE_TO_ASCII] = $instance;
             }
         }
 
-        return new static($cp, $ch);
+        return $this->cache[static::CACHE_TO_ASCII];
     }
 
     /**
