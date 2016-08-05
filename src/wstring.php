@@ -469,6 +469,26 @@ final class wstring implements ArrayAccess
     /**
      * @return wstring
      */
+    public function toAscii()
+    {
+        $ascii = $this->getAsciiMap();
+        $char = $this->getCharMap();
+        $ch = array();
+        $cp = array();
+
+        foreach ($this->codes as $code){
+            if(isset($ascii[$code])){
+                $cp[] = $c = $ascii[$code];
+                $ch[] = $char[$c];
+            }
+        }
+
+        return new self($cp, $ch);
+    }
+
+    /**
+     * @return wstring
+     */
     public function toLower()
     {
         if(!isset($this->cache[self::CACHE_TO_LOWER])){
@@ -531,7 +551,6 @@ final class wstring implements ArrayAccess
 
         $cm = $character_mask->codes;
         $cp = $this->codes;
-        $l = count($cm);
         $start = 0;
         $end = $this->length;
 
@@ -630,5 +649,29 @@ final class wstring implements ArrayAccess
         return $lower;
     }
 
+    /**
+     * @return mixed
+     */
+    protected function getAsciiMap()
+    {
+        static $ascii;
+
+        if($ascii === null){
+            $ascii = require __DIR__ . '/../res/ascii.php';
+        }
+
+        return $ascii;
+    }
+
+    protected function getCharMap()
+    {
+        static $char;
+
+        if($char === null){
+            $char = require __DIR__ . '/../res/char.php';
+        }
+
+        return $char;
+    }
 
 }
