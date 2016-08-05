@@ -404,7 +404,7 @@ class UTF8String implements ArrayAccess
      * @param string|UTF8String $char
      * @return array
      */
-    public function split($char = ' ')
+    public function split($char = '')
     {
         $char = static::from($char);
         $results = array();
