@@ -23,7 +23,7 @@ namespace Opis\String;
 use ArrayAccess;
 use Exception;
 
-class WString implements ArrayAccess
+class UTF8String implements ArrayAccess
 {
     const CACHE_IS_LOWER = 0;
 
@@ -125,7 +125,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $text
+     * @param string|UTF8String $text
      * @param bool $ignoreCase
      * @return bool
      */
@@ -151,7 +151,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $text
+     * @param string|UTF8String $text
      * @param bool $ignoreCase
      * @return int
      */
@@ -177,7 +177,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $text
+     * @param string|UTF8String $text
      * @param bool $ignoreCase
      * @return bool
      */
@@ -187,7 +187,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $text
+     * @param string|UTF8String $text
      * @param bool $ignoreCase
      * @return bool
      */
@@ -197,7 +197,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $text
+     * @param string|UTF8String $text
      * @param bool $ignoreCase
      * @return bool
      */
@@ -215,7 +215,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $text
+     * @param string|UTF8String $text
      * @param int $offset
      * @param bool $ignoreCase
      * @return int|false
@@ -255,7 +255,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param WString|string $text
+     * @param UTF8String|string $text
      * @param bool $ignoreCase
      * @return false|int
      */
@@ -282,8 +282,8 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param WString|string $text
-     * @return WString
+     * @param UTF8String|string $text
+     * @return UTF8String
      */
     public function append($text)
     {
@@ -295,8 +295,8 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param WString|string $text
-     * @return WString
+     * @param UTF8String|string $text
+     * @return UTF8String
      */
     public function prepend($text)
     {
@@ -308,8 +308,8 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $character_mask
-     * @return WString
+     * @param string|UTF8String $character_mask
+     * @return UTF8String
      */
     public function trim($character_mask = " \t\n\r\0\x0B")
     {
@@ -317,8 +317,8 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $character_mask
-     * @return WString
+     * @param string|UTF8String $character_mask
+     * @return UTF8String
      */
     public function ltrim($character_mask = " \t\n\r\0\x0B")
     {
@@ -326,8 +326,8 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $character_mask
-     * @return WString
+     * @param string|UTF8String $character_mask
+     * @return UTF8String
      */
     public function rtrim($character_mask = " \t\n\r\0\x0B")
     {
@@ -335,10 +335,10 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $subject
-     * @param string|WString $replace
+     * @param string|UTF8String $subject
+     * @param string|UTF8String $replace
      * @param int $offset
-     * @return WString
+     * @return UTF8String
      * @throws Exception
      */
     public function replace($subject, $replace, $offset = 0)
@@ -362,9 +362,9 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $subject
-     * @param string|WString $replace
-     * @return WString
+     * @param string|UTF8String $subject
+     * @param string|UTF8String $replace
+     * @return UTF8String
      */
     public function replaceAll($subject, $replace)
     {
@@ -386,7 +386,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @return WString
+     * @return UTF8String
      */
     public function reverse()
     {
@@ -397,7 +397,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @param string|WString $char
+     * @param string|UTF8String $char
      * @return array
      */
     public function split($char = ' ')
@@ -434,7 +434,7 @@ class WString implements ArrayAccess
     /**
      * @param int $start
      * @param int|null $length
-     * @return WString
+     * @return UTF8String
      */
     public function substring($start, $length = null)
     {
@@ -469,7 +469,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @return WString
+     * @return UTF8String
      */
     public function toAscii()
     {
@@ -489,7 +489,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @return WString
+     * @return UTF8String
      */
     public function toLower()
     {
@@ -505,7 +505,7 @@ class WString implements ArrayAccess
     }
 
     /**
-     * @return WString
+     * @return UTF8String
      */
     public function toUpper()
     {
@@ -543,7 +543,7 @@ class WString implements ArrayAccess
 
     /**
      * @param $string
-     * @return WString
+     * @return UTF8String
      * @throws Exception
      */
     public static function from($string)
@@ -647,7 +647,7 @@ class WString implements ArrayAccess
      * @param $character_mask
      * @param bool $left
      * @param bool $right
-     * @return WString
+     * @return UTF8String
      * @throws Exception
      */
     protected function doTrim($character_mask, $left = true, $right = true)
@@ -686,7 +686,7 @@ class WString implements ArrayAccess
     /**
      * @param array $map
      * @param int $cacheKey
-     * @return WString
+     * @return UTF8String
      */
     protected function toCase(array $map, $cacheKey)
     {
