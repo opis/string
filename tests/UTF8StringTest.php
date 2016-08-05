@@ -23,7 +23,7 @@ namespace Opis\String\Test;
 use Opis\String\UTF8String as wstring;
 use PHPUnit\Framework\TestCase;
 
-class WStringTest extends TestCase
+class UTF8StringTest extends TestCase
 {
     public function testEquals()
     {
