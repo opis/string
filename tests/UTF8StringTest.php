@@ -205,4 +205,10 @@ class UTF8StringTest extends TestCase
         $this->assertEquals("aAaAiIsStT", wstring::from("ăĂâÂîÎşŞţŢ")->toAscii());
     }
 
+    public function testIsAscii()
+    {
+        $this->assertTrue(wstring::from('abcde')->isAscii());
+        $this->assertFalse(wstring::from('abcîÎşa')->isAscii());
+    }
+
 }
