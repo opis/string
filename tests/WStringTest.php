@@ -179,4 +179,9 @@ class WStringTest extends TestCase
         $this->assertEquals('abc', wstring('AbC')->toLower());
     }
 
+    public function testToAscii()
+    {
+        $this->assertEquals("aAaAiIsStT", wstring("ăĂâÂîÎşŞţŢ")->toAscii());
+    }
+
 }
