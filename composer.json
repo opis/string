@@ -14,7 +14,8 @@
         "phpunit/phpunit": "5.4.*"
     },
     "autoload": {
-        "files": ["src/wstring.php"]
+        "classmap": ["src/wstring.php"],
+        "files": ["src/functions.php"]
     },
     "extra": {
         "branch-alias": {
