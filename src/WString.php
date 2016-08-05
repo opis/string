@@ -18,10 +18,12 @@
  * limitations under the License.
  * ============================================================================ */
 
-/**
- * Class wstring
- */
-final class wstring implements ArrayAccess
+namespace Opis\String;
+
+use ArrayAccess;
+use Exception;
+
+class WString implements ArrayAccess
 {
     const CACHE_IS_LOWER = 0;
 
@@ -123,13 +125,13 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $text
+     * @param string|WString $text
      * @param bool $ignoreCase
      * @return bool
      */
     public function equals($text, $ignoreCase = false)
     {
-        $text = wstring($text);
+        $text = static::from($text);
 
         if($this->length !== $text->length){
             return false;
@@ -149,13 +151,13 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $text
+     * @param string|WString $text
      * @param bool $ignoreCase
      * @return int
      */
     public function compareTo($text, $ignoreCase = false)
     {
-        $text = wstring($text);
+        $text = static::from($text);
 
         if($this->length !== $text->length){
             return $this->length > $text->length ? 1 : -1;
@@ -175,7 +177,7 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $text
+     * @param string|WString $text
      * @param bool $ignoreCase
      * @return bool
      */
@@ -185,7 +187,7 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $text
+     * @param string|WString $text
      * @param bool $ignoreCase
      * @return bool
      */
@@ -195,13 +197,13 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $text
+     * @param string|WString $text
      * @param bool $ignoreCase
      * @return bool
      */
     public function endsWith($text, $ignoreCase = false)
     {
-        $text = wstring($text);
+        $text = static::from($text);
 
         $offset = $this->length - $text->length;
 
@@ -213,7 +215,7 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $text
+     * @param string|WString $text
      * @param int $offset
      * @param bool $ignoreCase
      * @return int|false
@@ -221,7 +223,7 @@ final class wstring implements ArrayAccess
      */
     public function indexOf($text, $offset = 0, $ignoreCase = false)
     {
-        $text = wstring($text);
+        $text = static::from($text);
 
         if($ignoreCase){
             return $this->toLower()->indexOf($text->toLower(), $offset);
@@ -253,13 +255,13 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param wstring|string $text
+     * @param WString|string $text
      * @param bool $ignoreCase
      * @return false|int
      */
     public function lastIndexOf($text, $ignoreCase = false)
     {
-        $text = wstring($text);
+        $text = static::from($text);
 
         if($ignoreCase){
             return $this->toLower()->lastIndexOf($text->toLower());
@@ -280,34 +282,34 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param wstring|string $text
-     * @return wstring
+     * @param WString|string $text
+     * @return WString
      */
     public function append($text)
     {
-        $text = wstring($text);
+        $text = static::from($text);
         $cp = array_merge($this->codes, $text->codes);
         $ch = array_merge($this->chars, $text->chars);
 
-        return new self($cp, $ch);
+        return new static($cp, $ch);
     }
 
     /**
-     * @param wstring|string $text
-     * @return wstring
+     * @param WString|string $text
+     * @return WString
      */
     public function prepend($text)
     {
-        $text = wstring($text);
+        $text = static::from($text);
         $cp = array_merge($text->codes, $this->codes);
         $ch = array_merge($text->chars, $this->chars);
 
-        return new self($cp, $ch);
+        return new static($cp, $ch);
     }
 
     /**
-     * @param string|wstring $character_mask
-     * @return wstring
+     * @param string|WString $character_mask
+     * @return WString
      */
     public function trim($character_mask = " \t\n\r\0\x0B")
     {
@@ -315,8 +317,8 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $character_mask
-     * @return wstring
+     * @param string|WString $character_mask
+     * @return WString
      */
     public function ltrim($character_mask = " \t\n\r\0\x0B")
     {
@@ -324,8 +326,8 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $character_mask
-     * @return wstring
+     * @param string|WString $character_mask
+     * @return WString
      */
     public function rtrim($character_mask = " \t\n\r\0\x0B")
     {
@@ -333,16 +335,16 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @param string|wstring $subject
-     * @param string|wstring $replace
+     * @param string|WString $subject
+     * @param string|WString $replace
      * @param int $offset
-     * @return wstring
+     * @return WString
      * @throws Exception
      */
     public function replace($subject, $replace, $offset = 0)
     {
-        $subject = wstring($subject);
-        $replace = wstring($replace);
+        $subject = static::from($subject);
+        $replace = static::from($replace);
 
         if(false === $pos = $this->indexOf($subject, $offset)){
             return clone $this;
@@ -356,18 +358,18 @@ final class wstring implements ArrayAccess
         $cp = array_merge($cp1, $replace->codes, $cp2);
         $ch = array_merge($ch1, $replace->chars, $ch2);
 
-        return new self($cp, $ch);
+        return new static($cp, $ch);
     }
 
     /**
-     * @param string|wstring $subject
-     * @param string|wstring $replace
-     * @return wstring
+     * @param string|WString $subject
+     * @param string|WString $replace
+     * @return WString
      */
     public function replaceAll($subject, $replace)
     {
-        $subject = wstring($subject);
-        $replace = wstring($replace);
+        $subject = static::from($subject);
+        $replace = static::from($replace);
 
         if(false === $offset = $this->indexOf($subject) || $subject->isEmpty()){
             return clone $this;
@@ -384,28 +386,28 @@ final class wstring implements ArrayAccess
     }
 
     /**
-     * @return wstring
+     * @return WString
      */
     public function reverse()
     {
         $cp = array_reverse($this->codes);
         $ch = array_reverse($this->chars);
 
-        return new self($cp, $ch);
+        return new static($cp, $ch);
     }
 
     /**
-     * @param string|wstring $char
+     * @param string|WString $char
      * @return array
      */
     public function split($char = ' ')
     {
-        $char = wstring($char);
+        $char = static::from($char);
         $results = array();
 
         if($char->isEmpty()){
             for($i = 0, $l = $this->length; $i < $l; $i++){
-                $results[] = new self(array($this->codes[$i]), array($this->chars[$i]));
+                $results[] = new static(array($this->codes[$i]), array($this->chars[$i]));
             }
             return $results;
         }
@@ -418,28 +420,28 @@ final class wstring implements ArrayAccess
         do{
             $cp = array_slice($this->codes, $start, $offset - $start);
             $ch = array_slice($this->chars, $start, $offset - $start);
-            $results[] = new self($cp, $ch);
+            $results[] = new static($cp, $ch);
             $start = $offset + $char->length;
             $offset = $this->indexOf($char, $start);
         } while ($offset !== false);
 
         $cp = array_slice($this->codes, $start);
         $ch = array_slice($this->chars, $start);
-        $results[] = new self($cp, $ch);
+        $results[] = new static($cp, $ch);
         return $results;
     }
 
     /**
      * @param int $start
      * @param int|null $length
-     * @return wstring
+     * @return WString
      */
     public function substring($start, $length = null)
     {
         $cp = array_slice($this->codes, $start, $length);
         $ch = array_slice($this->chars, $start, $length);
 
-        return new self($cp, $ch);
+        return new static($cp, $ch);
     }
 
     /**
@@ -447,11 +449,11 @@ final class wstring implements ArrayAccess
      */
     public function isLowerCase()
     {
-        if(!isset($this->cache[self::CACHE_IS_LOWER])){
-            $this->cache[self::CACHE_IS_LOWER] = $this->isCase($this->getLowerMap());
+        if(!isset($this->cache[static::CACHE_IS_LOWER])){
+            $this->cache[static::CACHE_IS_LOWER] = $this->isCase($this->getLowerMap());
         }
 
-        return $this->cache[self::CACHE_IS_LOWER];
+        return $this->cache[static::CACHE_IS_LOWER];
     }
 
     /**
@@ -459,15 +461,15 @@ final class wstring implements ArrayAccess
      */
     public function isUpperCase()
     {
-        if(!isset($this->cache[self::CACHE_IS_UPPER])){
-            $this->cache[self::CACHE_IS_UPPER] = $this->isCase($this->getUpperMap());
+        if(!isset($this->cache[static::CACHE_IS_UPPER])){
+            $this->cache[static::CACHE_IS_UPPER] = $this->isCase($this->getUpperMap());
         }
 
-        return $this->cache[self::CACHE_IS_UPPER];
+        return $this->cache[static::CACHE_IS_UPPER];
     }
 
     /**
-     * @return wstring
+     * @return WString
      */
     public function toAscii()
     {
@@ -483,39 +485,39 @@ final class wstring implements ArrayAccess
             }
         }
 
-        return new self($cp, $ch);
+        return new static($cp, $ch);
     }
 
     /**
-     * @return wstring
+     * @return WString
      */
     public function toLower()
     {
-        if(!isset($this->cache[self::CACHE_TO_LOWER])){
-            if(isset($this->cache[self::CACHE_IS_LOWER]) && $this->cache[self::CACHE_IS_LOWER]){
-                $this->cache[self::CACHE_TO_LOWER] = clone $this;
+        if(!isset($this->cache[static::CACHE_TO_LOWER])){
+            if(isset($this->cache[static::CACHE_IS_LOWER]) && $this->cache[static::CACHE_IS_LOWER]){
+                $this->cache[static::CACHE_TO_LOWER] = clone $this;
             } else {
-                $this->cache[self::CACHE_TO_LOWER] = $this->toCase($this->getLowerMap(), self::CACHE_IS_LOWER);
+                $this->cache[static::CACHE_TO_LOWER] = $this->toCase($this->getLowerMap(), static::CACHE_IS_LOWER);
             }
         }
 
-        return $this->cache[self::CACHE_TO_LOWER];
+        return $this->cache[static::CACHE_TO_LOWER];
     }
 
     /**
-     * @return wstring
+     * @return WString
      */
     public function toUpper()
     {
-        if(!isset($this->cache[self::CACHE_TO_UPPER])){
-            if(isset($this->cache[self::CACHE_IS_UPPER]) && $this->cache[self::CACHE_IS_UPPER]){
-                $this->cache[self::CACHE_TO_UPPER] = clone $this;
+        if(!isset($this->cache[static::CACHE_TO_UPPER])){
+            if(isset($this->cache[static::CACHE_IS_UPPER]) && $this->cache[static::CACHE_IS_UPPER]){
+                $this->cache[static::CACHE_TO_UPPER] = clone $this;
             } else {
-                $this->cache[self::CACHE_TO_UPPER] = $this->toCase($this->getUpperMap(), self::CACHE_IS_UPPER);
+                $this->cache[static::CACHE_TO_UPPER] = $this->toCase($this->getUpperMap(), static::CACHE_IS_UPPER);
             }
         }
 
-        return $this->cache[self::CACHE_TO_UPPER];
+        return $this->cache[static::CACHE_TO_UPPER];
     }
 
     /**
@@ -535,19 +537,122 @@ final class wstring implements ArrayAccess
         if($this->string === null){
             $this->string = implode('', $this->chars);
         }
+
         return $this->string;
+    }
+
+    /**
+     * @param $string
+     * @return WString
+     * @throws Exception
+     */
+    public static function from($string)
+    {
+        static $ord, $chr;
+
+        if($string instanceof self){
+            return $string;
+        }
+
+        $codes = $chars = array();
+
+        if(false === $text = json_encode((string) $string)) {
+            throw new Exception("Invalid UTF-8 string");
+        }
+
+        if($ord === null || $chr === null){
+            $ord = require __DIR__ .'/../res/ord.php';
+            $chr = require __DIR__ . '/../res/char.php';
+        }
+
+        for($i = 1, $l = strlen($text) - 1; $i < $l; $i++) {
+            $c = $text[$i];
+
+            if($c === '\\'){
+                if(isset($text[$i + 1])){
+
+                    if($text[$i + 1] === 'u'){
+
+                        $codes[] = $cp = hexdec(substr($text, $i, 6));
+
+                        if ($cp < 0x80) {
+                            $chars[] = $chr[$cp];
+                        } elseif ($cp <= 0x7FF) {
+                            $chars[] = $chr[($cp >> 6) + 0xC0] . $chr[($cp & 0x3F) + 0x80];
+                        } elseif ($cp <= 0xFFFF) {
+                            $chars[] = $chr[($cp >> 12) + 0xE0] . $chr[(($cp >> 6) & 0x3F) + 0x80] . $chr[($cp & 0x3F) + 0x80];
+                        } elseif ($cp <= 0x10FFFF) {
+                            $chars[] = $chr[($cp >> 18) + 0xF0] . $chr[(($cp >> 12) & 0x3F) + 0x80]
+                                . $chr[(($cp >> 6) & 0x3F) + 0x80] . $chr[($cp & 0x3F) + 0x80];
+                        } else {
+                            throw new Exception("Invalid UTF-8");
+                        }
+
+                        $i += 5;
+                        continue;
+
+                    } else{
+
+                        switch ($text[$i + 1]){
+                            case '\\':
+                                $c = "\\";
+                                break;
+                            case '\'':
+                                $c = "'";
+                                break;
+                            case '"':
+                                $c = '"';
+                                break;
+                            case 'n':
+                                $c = "\n";
+                                break;
+                            case 'r':
+                                $c = "\r";
+                                break;
+                            case 't':
+                                $c = "\t";
+                                break;
+                            case 'b':
+                                $c = "\b";
+                                break;
+                            case 'f':
+                                $c = "\f";
+                                break;
+                            case 'v':
+                                $c = "\v";
+                                break;
+                            case '0':
+                                $c = "\0";
+                                break;
+                            default:
+                                $c = $text[$i + 1];
+                        }
+
+                        $codes[] = $ord[$c];
+                        $chars[] = $c;
+                        $i++;
+                        continue;
+                    }
+                }
+            }
+
+            $codes[] = $ord[$c];
+            $chars[] = $c;
+        }
+
+        return new static($codes, $chars);
     }
 
     /**
      * @param $character_mask
      * @param bool $left
      * @param bool $right
-     * @return wstring
+     * @return WString
      * @throws Exception
      */
     protected function doTrim($character_mask, $left = true, $right = true)
     {
-        $character_mask = wstring($character_mask);
+        $character_mask = static::from($character_mask);
 
         $cm = $character_mask->codes;
         $cp = $this->codes;
@@ -575,13 +680,13 @@ final class wstring implements ArrayAccess
         $cp = array_slice($cp, $start, $end - $start);
         $ch = array_slice($this->chars, $start, $end - $start);
 
-        return new self($cp, $ch);
+        return new static($cp, $ch);
     }
 
     /**
      * @param array $map
      * @param int $cacheKey
-     * @return wstring
+     * @return WString
      */
     protected function toCase(array $map, $cacheKey)
     {
@@ -601,7 +706,7 @@ final class wstring implements ArrayAccess
             }
         }
 
-        $str = new self($ocp, $och);
+        $str = new static($ocp, $och);
         $str->cache[$cacheKey] = true;
 
         return $str;
