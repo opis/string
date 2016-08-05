@@ -14,8 +14,9 @@
         "phpunit/phpunit": "5.4.*"
     },
     "autoload": {
-        "classmap": ["src/wstring.php"],
-        "files": ["src/functions.php"]
+        "psr-4": {
+            "Opis\\String\\": "src/"
+        }
     },
     "extra": {
         "branch-alias": {
