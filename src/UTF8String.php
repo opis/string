@@ -21,10 +21,9 @@
 namespace Opis\String;
 
 use ArrayAccess;
-use Countable;
 use Exception;
 
-class UTF8String implements ArrayAccess, Countable
+class UTF8String implements ArrayAccess
 {
     const CACHE_IS_LOWER = 0;
 
@@ -95,14 +94,6 @@ class UTF8String implements ArrayAccess, Countable
     public function offsetUnset($offset)
     {
         throw new Exception("Invalid operation");
-    }
-
-    /**
-     * @return int
-     */
-    public function count()
-    {
-        return $this->length;
     }
 
     /**
