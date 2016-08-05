@@ -147,12 +147,12 @@ class UTF8StringTest extends \PHPUnit_Framework_TestCase
 
     public function testRightTrim()
     {
-        $this->assertEquals("   \nabc", (string) wstring::from("   \nabc\n\r\t \n")->rtrim());
+        $this->assertEquals("   \nabc", (string) wstring::from("   \nabc\n\r\t \n")->trimRight());
     }
 
     public function testLeftTrim()
     {
-        $this->assertEquals("abc\n\r\t \n", (string) wstring::from("   \nabc\n\r\t \n")->ltrim());
+        $this->assertEquals("abc\n\r\t \n", (string) wstring::from("   \nabc\n\r\t \n")->trimLeft());
     }
 
     public function testReplace()

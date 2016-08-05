@@ -244,7 +244,7 @@ echo wstring::from('  abc  ')->trim(); //> abc
 echo wstring::from('xxxabcxxx')->trim('x'); //> abc
 ```
 
-##### ltrim($character_mask = " \t\n\r\0\x0B")
+##### trimLeft($character_mask = " \t\n\r\0\x0B")
 
 Trim from the left side of the string, the characters specified in the character mask
 
@@ -254,7 +254,7 @@ use Opis\String\UTF8String as wstring;
 echo wstring::from('xxxabcxxx')->ltrim('x'); //> abcxxx
 ```
 
-##### rtrim($character_mask = " \t\n\r\0\x0B")
+##### trimRight($character_mask = " \t\n\r\0\x0B")
 
 Trim from the right side of the string, the characters specified in the character mask
 

@@ -324,7 +324,7 @@ class UTF8String implements ArrayAccess
      * @param string|UTF8String $character_mask
      * @return UTF8String
      */
-    public function ltrim($character_mask = " \t\n\r\0\x0B")
+    public function trimLeft($character_mask = " \t\n\r\0\x0B")
     {
         return $this->doTrim($character_mask, true, false);
     }
@@ -333,7 +333,7 @@ class UTF8String implements ArrayAccess
      * @param string|UTF8String $character_mask
      * @return UTF8String
      */
-    public function rtrim($character_mask = " \t\n\r\0\x0B")
+    public function trimRight($character_mask = " \t\n\r\0\x0B")
     {
         return $this->doTrim($character_mask, false, true);
     }
