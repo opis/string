@@ -177,16 +177,16 @@ class UTF8StringTest extends TestCase
         $map = function($value){
             return (string) $value;
         };
-        $split = function($text, $char = ' ') use($map){
+        $split = function($text, $char = '') use($map){
             return array_map($map, wstring::from($text)->split($char));
         };
 
-        $this->assertEquals(array('a', 'b', 'c'), $split('a b c'));
-        $this->assertEquals(array('', 'a', 'b', 'c'), $split(' a b c'));
-        $this->assertEquals(array('', 'a', 'b', 'c', '', ''), $split(' a b c  '));
-        $this->assertEquals(array(' a b c', ''), $split(' a b c  ', '  '));
-        $this->assertEquals(array('a b c'), $split('a b c', '#'));
-        $this->assertEquals(array('a', 'b', 'c'), $split('abc', ''));
+        $this->assertEquals(array('a', 'b', 'c'), $split('a|b|c', '|'));
+        $this->assertEquals(array('', 'a', 'b', 'c'), $split('|a|b|c', '|'));
+        $this->assertEquals(array('', 'a', 'b', 'c', '', ''), $split('|a|b|c||', '|'));
+        $this->assertEquals(array('|a|b|c', ''), $split('|a|b|c||', '||'));
+        $this->assertEquals(array('a|b|c'), $split('a|b|c', '#'));
+        $this->assertEquals(array('a', 'b', 'c'), $split('abc'));
     }
 
     public function testSubstring()
