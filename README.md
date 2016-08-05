@@ -235,7 +235,7 @@ echo wstring::from('abc')->prepend('def'); //> defabc
 
 ##### trim($character_mask = " \t\n\r\0\x0B")
 
-Trim all characters specified in character mask from both sides
+Trim from both sides of the string, the characters specified in the character mask
 
 ```php
 use Opis\String\UTF8String as wstring;
@@ -246,7 +246,7 @@ echo wstring::from('xxxabcxxx')->trim('x'); //> abc
 
 ##### ltrim($character_mask = " \t\n\r\0\x0B")
 
-Trim all characters specified in character mask from left side
+Trim from the left side of the string, the characters specified in the character mask
 
 ```php
 use Opis\String\UTF8String as wstring;
@@ -256,7 +256,7 @@ echo wstring::from('xxxabcxxx')->ltrim('x'); //> abcxxx
 
 ##### rtrim($character_mask = " \t\n\r\0\x0B")
 
-Trim all characters specified in character mask from left side
+Trim from the right side of the string, the characters specified in the character mask
 
 ```php
 use Opis\String\UTF8String as wstring;
