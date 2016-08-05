@@ -21,9 +21,8 @@
 namespace Opis\String\Test;
 
 use Opis\String\UTF8String as wstring;
-use PHPUnit\Framework\TestCase;
 
-class UTF8StringTest extends TestCase
+class UTF8StringTest extends \PHPUnit_Framework_TestCase
 {
     public function testLength()
     {
