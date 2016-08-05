@@ -64,7 +64,7 @@ echo $str->substring(3, 4)
 ```
 
 **Important!** The `UnicodeString` instances are immutable and works in
-a similar manner as C# or Java strings works.
+a similar manner as C# or Java strings.
 
 ```php
 use Opis\String\UnicodeString as wstring;
