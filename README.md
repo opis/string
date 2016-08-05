@@ -37,7 +37,7 @@ This library is available on [Packagist](https://packagist.org/packages/opis/str
 Creating a new UTF-8 string is done using the static method `from`.
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 $str = wstring::from('ăĂâÂîÎşŞţŢ');
 ```
@@ -55,7 +55,7 @@ echo $str[4]; //> î
 You can chain multiple methods to perform operations against a string.
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 $str = wstring::from('ăĂâÂîÎşŞţŢ');
 
@@ -63,11 +63,11 @@ echo $str->substring(3, 4)
          ->toUpper(); //> ÂÎÎŞ
 ```
 
-**Important!** The `UTF8String` instances are immutable and works in
+**Important!** The `UnicodeString` instances are immutable and works in
 a similar manner as C# or Java strings works.
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 $str = wstring::from('abcd');
 
@@ -178,7 +178,7 @@ if($str->endsWith('abcd', true)){
 Find the first occurrence of the given string within the current string 
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abcabc')->indexOf('a'); //> 0
 ```
@@ -186,7 +186,7 @@ echo wstring::from('abcabc')->indexOf('a'); //> 0
 You can also specify the index on which the search to begin from
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abcabc')->indexOf('a', 1); //> 3
 ```
@@ -195,7 +195,7 @@ Case insensitive searching is done by passing `true` as the last argument
 to the method
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abcABC')->indexOf('A', 0, true); //> 0
 ```
@@ -205,7 +205,7 @@ echo wstring::from('abcABC')->indexOf('A', 0, true); //> 0
 Find the last occurrence of the given string within the current string 
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('AbcAbcabc')->lastIndexOf('A'); //> 3
 
@@ -218,7 +218,7 @@ echo wstring::from('AbcAbcabc')->lastIndexOf('A', true); //> 6
 Append the given string to the current string
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abc')->append('def'); //> abcdef
 ```
@@ -228,7 +228,7 @@ echo wstring::from('abc')->append('def'); //> abcdef
 Prepend the given string to the current string
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abc')->prepend('def'); //> defabc
 ```
@@ -238,7 +238,7 @@ echo wstring::from('abc')->prepend('def'); //> defabc
 Trim from both sides of the string, the characters specified in the character mask
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('  abc  ')->trim(); //> abc
 echo wstring::from('xxxabcxxx')->trim('x'); //> abc
@@ -249,7 +249,7 @@ echo wstring::from('xxxabcxxx')->trim('x'); //> abc
 Trim from the left side of the string, the characters specified in the character mask
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('xxxabcxxx')->ltrim('x'); //> abcxxx
 ```
@@ -259,7 +259,7 @@ echo wstring::from('xxxabcxxx')->ltrim('x'); //> abcxxx
 Trim from the right side of the string, the characters specified in the character mask
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('xxxabcxxx')->rtrim('x'); //> xxxabc
 ```
@@ -269,7 +269,7 @@ echo wstring::from('xxxabcxxx')->rtrim('x'); //> xxxabc
 Replace the first occurrence of the given string with another one
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abcabc')->replace('abc', 'foo'); //> fooabc
 
@@ -282,7 +282,7 @@ echo wstring::from('abcabc')->replace('abc', 'foo', 2); //> abcfoo
 Replace all occurrences of the given string with another one
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abcabc')->replaceAll('abc', 'foo'); //> foofoo
 ```
@@ -293,7 +293,7 @@ Returns a string containing all the characters from the current string,
 but in reversed order
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abcdef')->reverse(); //> fedcba
 ```
@@ -305,7 +305,7 @@ UTF-8 string. If no delimiter was given, an UTF-8 string will be created
 foreach char in the current string.
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 $str = wstring::from('a,b,c');
 $tmp = '';
@@ -322,7 +322,7 @@ echo $tmp; //> abc
 Copy the specified portion of the string to another string
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abcdef')->substring(3); //> def
 echo wstring::from('abcdef')->substring(3, 2); //> de
@@ -345,7 +345,7 @@ Check if the current string contains only ASCII chars
 Returns the lowercase version of the current string
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('ABC')->toLower(); //> abc
 ```
@@ -355,7 +355,7 @@ echo wstring::from('ABC')->toLower(); //> abc
 Returns the uppercase version of the current string
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abc')->toUpper(); //> ABC
 ```
@@ -365,7 +365,7 @@ echo wstring::from('abc')->toUpper(); //> ABC
 Returns the ASCII version(if possible) of the current string
 
 ```php
-use Opis\String\UTF8String as wstring;
+use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('ăĂâÂîÎşŞţŢ')->toAscii(); //> aAaAiIsStT
 ```
