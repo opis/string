@@ -5,12 +5,12 @@ Opis String
 [![Latest Unstable Version](https://poser.pugx.org/opis/string/v/unstable.png)](//packagist.org/packages/opis/string)
 [![License](https://poser.pugx.org/opis/string/license.png)](https://packagist.org/packages/opis/string)
 
-UTF-8 string manipulation
--------------------------
+Multi-byte string manipulation
+------------------------------
 
-This tiny library allows you to manipulate UTF-8 encoded strings using an
-OO paradigm. The library has **no dependencies** to mbstring or similar PHP
-extensions.
+This tiny library allows you to manipulate strings encoded in multi-byte 
+encodings, using an OO paradigm. The library has **no dependencies** to 
+mbstring or similar PHP extensions.
 
 ### License
 
@@ -34,7 +34,7 @@ This library is available on [Packagist](https://packagist.org/packages/opis/str
 
 ### Usage
 
-Creating a new UTF-8 string is done using the static method `from`.
+Creating a new Unicode string is done using the static method `from`.
 
 ```php
 use Opis\String\UnicodeString as wstring;
@@ -42,7 +42,7 @@ use Opis\String\UnicodeString as wstring;
 $str = wstring::from('ăĂâÂîÎşŞţŢ');
 ```
 
-Once created, you can use the UTF-8 object in the same manner in which 
+Once created, you can use the resulted object in the same manner in which 
 you would use a regular string.
 
 ```php
