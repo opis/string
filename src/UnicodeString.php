@@ -584,15 +584,22 @@ class UnicodeString implements ArrayAccess
 
     /**
      * @param $string
+     * @param string $encoding
      * @return UnicodeString
      * @throws Exception
      */
-    public static function from($string)
+    public static function from($string, $encoding = 'UTF-8')
     {
         static $ord, $chr;
 
         if($string instanceof self){
             return $string;
+        }
+
+        if($encoding !== 'UTF-8'){
+            if(false === $string = iconv($encoding, 'UTF-8', $string)){
+                throw new Exception("Could not convert string from '$encoding' encoding to UTF-8 encoding");
+            }
         }
 
         $codes = $chars = array();
