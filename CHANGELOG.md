@@ -1,3 +1,17 @@
+## v1.2.0-dev
+### Added
+- `repeat` method
+
+### Removed
+- Nothing
+
+### Changed
+- Improved `equals` method
+- Improved `indexOf` and `lastIndexOf` methods
+
+### Fixed
+- Nothing
+
 ## v1.1.1 - 2016.08.08
 ### Added
 - Nothing
