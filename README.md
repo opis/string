@@ -251,7 +251,7 @@ Trim from the left side of the string, the characters specified in the character
 ```php
 use Opis\String\UnicodeString as wstring;
 
-echo wstring::from('xxxabcxxx')->ltrim('x'); //> abcxxx
+echo wstring::from('xxxabcxxx')->trimLeft('x'); //> abcxxx
 ```
 
 ##### trimRight($character_mask = " \t\n\r\0\x0B")
@@ -261,7 +261,7 @@ Trim from the right side of the string, the characters specified in the characte
 ```php
 use Opis\String\UnicodeString as wstring;
 
-echo wstring::from('xxxabcxxx')->rtrim('x'); //> xxxabc
+echo wstring::from('xxxabcxxx')->trimRight('x'); //> xxxabc
 ```
 
 ##### replace($subject, $replace, $offset = 0)
