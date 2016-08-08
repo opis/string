@@ -42,6 +42,16 @@ use Opis\String\UnicodeString as wstring;
 $str = wstring::from('ăĂâÂîÎşŞţŢ');
 ```
 
+By default, it's assumed that your string is encoded using UTF-8. 
+If your string is encoded using another encoding, you can pass the name 
+of the encoding as the second argument of the `from` method.
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+$str = wstring::from($string, 'ISO-8859-1');
+```
+
 Once created, you can use the resulted object in the same manner in which 
 you would use a regular string.
 
