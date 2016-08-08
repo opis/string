@@ -264,7 +264,7 @@ class UnicodeString implements ArrayAccess
         if($this->length < $text->length){
             return false;
         }
-        
+
         if($ignoreCase){
             return $this->toLower()->lastIndexOf($text->toLower());
         }
@@ -394,6 +394,28 @@ class UnicodeString implements ArrayAccess
     {
         $cp = array_reverse($this->codes);
         $ch = array_reverse($this->chars);
+
+        return new static($cp, $ch);
+    }
+
+
+    /**
+     * @param int $times
+     * @return UnicodeString
+     */
+    public function repeat($times = 1)
+    {
+        if($times < 1){
+            $times = 1;
+        }
+
+        $cp = $this->codes;
+        $ch = $this->chars;
+
+        for($i = 0; $i < $times; $i++){
+            $cp = array_merge($cp, $this->codes);
+            $ch = array_merge($ch, $this->chars);
+        }
 
         return new static($cp, $ch);
     }

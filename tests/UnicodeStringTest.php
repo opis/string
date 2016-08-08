@@ -176,6 +176,12 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("fedcba", (string) wstring::from("abcdef")->reverse());
     }
 
+    public function testRepeat()
+    {
+        $this->assertEquals("abcabc", (string) wstring::from("abc")->repeat());
+        $this->assertEquals("abcabcabcabc", (string) wstring::from("abc")->repeat(3));
+    }
+
     public function testSplit()
     {
         $map = function($value){
