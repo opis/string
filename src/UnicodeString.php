@@ -137,21 +137,11 @@ class UnicodeString implements ArrayAccess
     {
         $text = static::from($text);
 
-        if($this->length !== $text->length){
-            return false;
-        }
-
         if($ignoreCase){
             return $this->toLower()->equals($text->toLower());
         }
 
-        for($i = 0, $l = $this->length; $i < $l; $i++){
-            if($this->codes[$i] !== $text->codes[$i]){
-                return false;
-            }
-        }
-
-        return true;
+        return $this->codes === $text->codes;
     }
 
     /**
