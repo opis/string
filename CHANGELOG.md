@@ -1,4 +1,4 @@
-## v1.2.0-dev
+## v1.2.0 - 2016.08.08
 ### Added
 - `repeat` method
 
