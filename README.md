@@ -308,6 +308,17 @@ use Opis\String\UnicodeString as wstring;
 echo wstring::from('abcdef')->reverse(); //> fedcba
 ```
 
+##### repeat($times = 1)
+
+Repeat the current string an arbitrary number of times.
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+echo wstring::from('abc')->repeat(); //> abcabc
+echo wstring::from('abc')->repeat(2); //> abcabcabc
+```
+
 ##### split($char = '')
 
 Split the current string using the given delimiter and return an array of
