@@ -180,6 +180,7 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
     {
         $this->assertEquals("abcabc", (string) wstring::from("abc")->repeat());
         $this->assertEquals("abcabcabcabc", (string) wstring::from("abc")->repeat(3));
+        $this->assertEquals("ăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢ", (string) wstring::from("ăĂâÂîÎşŞţŢ")->repeat(2));
     }
 
     public function testSplit()
