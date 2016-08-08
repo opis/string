@@ -29,6 +29,11 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(10, wstring::from('ăĂâÂîÎşŞţŢ')->length());
     }
 
+    public function testToString()
+    {
+        $this->assertEquals('ăĂâÂîÎşŞţŢ', (string) wstring::from('ăĂâÂîÎşŞţŢ'));
+    }
+
     public function testArrayAccess()
     {
         $str = wstring::from('ăĂâÂîÎşŞţŢ');
