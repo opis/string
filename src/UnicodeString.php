@@ -261,6 +261,10 @@ class UnicodeString implements ArrayAccess
     {
         $text = static::from($text);
 
+        if($this->length < $text->length){
+            return false;
+        }
+        
         if($ignoreCase){
             return $this->toLower()->lastIndexOf($text->toLower());
         }
