@@ -590,7 +590,7 @@ class UnicodeString implements ArrayAccess
      */
     public static function from($string, $encoding = 'UTF-8')
     {
-        static $ord, $chr;
+        static $ord;
 
         if($string instanceof self){
             return $string;
@@ -602,90 +602,36 @@ class UnicodeString implements ArrayAccess
             }
         }
 
+        if($ord === null ){
+            $ord = require __DIR__ .'/../res/ord.php';
+        }
+
         $codes = $chars = array();
 
-        if(false === $text = json_encode((string) $string)) {
-            throw new Exception("Invalid UTF-8 string");
-        }
+        for($i = 0, $l = strlen($string); $i < $l; $i++) {
+            $c = $ord[$ch = $string[$i]];
 
-        if($ord === null || $chr === null){
-            $ord = require __DIR__ .'/../res/ord.php';
-            $chr = require __DIR__ . '/../res/char.php';
-        }
-
-        for($i = 1, $l = strlen($text) - 1; $i < $l; $i++) {
-            $c = $text[$i];
-
-            if($c === '\\'){
-                if(isset($text[$i + 1])){
-
-                    if($text[$i + 1] === 'u'){
-
-                        $codes[] = $cp = hexdec(substr($text, $i, 6));
-
-                        if ($cp < 0x80) {
-                            $chars[] = $chr[$cp];
-                        } elseif ($cp <= 0x7FF) {
-                            $chars[] = $chr[($cp >> 6) + 0xC0] . $chr[($cp & 0x3F) + 0x80];
-                        } elseif ($cp <= 0xFFFF) {
-                            $chars[] = $chr[($cp >> 12) + 0xE0] . $chr[(($cp >> 6) & 0x3F) + 0x80] . $chr[($cp & 0x3F) + 0x80];
-                        } elseif ($cp <= 0x10FFFF) {
-                            $chars[] = $chr[($cp >> 18) + 0xF0] . $chr[(($cp >> 12) & 0x3F) + 0x80]
-                                . $chr[(($cp >> 6) & 0x3F) + 0x80] . $chr[($cp & 0x3F) + 0x80];
-                        } else {
-                            throw new Exception("Invalid UTF-8");
-                        }
-
-                        $i += 5;
-                        continue;
-
-                    } else{
-
-                        switch ($text[$i + 1]){
-                            case '\\':
-                                $c = "\\";
-                                break;
-                            case '\'':
-                                $c = "'";
-                                break;
-                            case '"':
-                                $c = '"';
-                                break;
-                            case 'n':
-                                $c = "\n";
-                                break;
-                            case 'r':
-                                $c = "\r";
-                                break;
-                            case 't':
-                                $c = "\t";
-                                break;
-                            case 'b':
-                                $c = "\b";
-                                break;
-                            case 'f':
-                                $c = "\f";
-                                break;
-                            case 'v':
-                                $c = "\v";
-                                break;
-                            case '0':
-                                $c = "\0";
-                                break;
-                            default:
-                                $c = $text[$i + 1];
-                        }
-
-                        $codes[] = $ord[$c];
-                        $chars[] = $c;
-                        $i++;
-                        continue;
-                    }
-                }
+            if(($c & 0x80) == 0){
+                $codes[] = $c;
+                $chars[] = $ch;
+            } elseif (($c & 0xE0) == 0xC0){
+                $c1 = $ord[$string[++$i]];
+                $codes[] = (($c & 0x1F) << 6) | ($c1 & 0x3F);
+                $chars[] = substr($string, $i - 1, 2);
+            } elseif (($c & 0xF0) == 0xE0){
+                $c1 = $ord[$string[++$i]];
+                $c2 = $ord[$string[++$i]];
+                $codes[] = (($c & 0x0F) << 12) | (($c1 & 0x3F) << 6) | ($c2 & 0x3F);
+                $chars[] = substr($string, $i - 2, 3);
+            } elseif (($c & 0xF8) == 0xF0){
+                $c1 = $ord[$string[++$i]];
+                $c2 = $ord[$string[++$i]];
+                $c3 = $ord[$string[++$i]];
+                $codes[] = (($c & 0x07) << 18) | (($c1 & 0x3F) << 12) | (($c2 & 0x3F) << 6) | ($c3 & 0x3F);
+                $chars[] = substr($string, $i - 3, 4);
+            } else {
+                throw new Exception('Invalid UTF-8 string');
             }
-
-            $codes[] = $ord[$c];
-            $chars[] = $c;
         }
 
         return new static($codes, $chars);
