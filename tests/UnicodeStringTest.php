@@ -145,6 +145,17 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("abcdef", (string) wstring::from('def')->prepend('abc'));
     }
 
+    public function testInsert()
+    {
+        $this->assertEquals("x012345", (string) wstring::from('012345')->insert('x', 0));
+        $this->assertEquals("x012345", (string) wstring::from('012345')->insert('x', -10));
+        $this->assertEquals("012x345", (string) wstring::from('012345')->insert('x', 3));
+        $this->assertEquals("0123x45", (string) wstring::from('012345')->insert('x', 4));
+        $this->assertEquals("01234x5", (string) wstring::from('012345')->insert('x', 5));
+        $this->assertEquals("012345x", (string) wstring::from('012345')->insert('x', 6));
+        $this->assertEquals("012345x", (string) wstring::from('012345')->insert('x', 100));
+    }
+
     public function testTrim()
     {
         $this->assertEquals("abc", (string) wstring::from("   \nabc\n\r\t \n")->trim());

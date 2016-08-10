@@ -310,6 +310,35 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
+     * @param string|UnicodeString $text
+     * @param int $index
+     * @return UnicodeString
+     */
+    public function insert($text, $index)
+    {
+        if($index <= 0){
+            return $this->prepend($text);
+        }
+
+        if($index >= $this->length){
+            return $this->append($text);
+        }
+
+        $text = static::from($text);
+
+        $lcp = array_slice($this->codes, 0, $index);
+        $lch = array_slice($this->chars, 0, $index);
+
+        $rcp = array_slice($this->codes, $index);
+        $rch = array_slice($this->chars, $index);
+
+        $cp = array_merge($lcp, $text->codes, $rcp);
+        $ch = array_merge($lch, $text->chars, $rch);
+
+        return new static($cp, $ch);
+    }
+
+    /**
      * @param string|UnicodeString $character_mask
      * @return UnicodeString
      */
