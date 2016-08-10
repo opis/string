@@ -194,6 +194,13 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("ăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢ", (string) wstring::from("ăĂâÂîÎşŞţŢ")->repeat(2));
     }
 
+    public function testRemove()
+    {
+        $this->assertEquals("ÂîÎşŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(0, 3));
+        $this->assertEquals("ăĂâÂîÎşŞţ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(9, 3));
+        $this->assertEquals("ăĂâÂŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(4, 3));
+    }
+
     public function testSplit()
     {
         $map = function($value){

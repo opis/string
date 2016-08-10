@@ -450,6 +450,32 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
+     * @param int $index
+     * @param int $length
+     * @return UnicodeString
+     */
+    public function remove($index, $length)
+    {
+        if($index < 0){
+            $index = 0;
+        }
+
+        if($length < 0){
+            $length = 0;
+        }
+
+        $lcp = array_slice($this->codes, 0, $index);
+        $lch = array_slice($this->chars, 0, $index);
+        $rcp = array_slice($this->codes, $index + $length);
+        $rch = array_slice($this->chars, $index + $length);
+
+        $cp = array_merge($lcp, $rcp);
+        $ch = array_merge($lch, $rch);
+
+        return new static($cp, $ch);
+    }
+
+    /**
      * @param string|UnicodeString $char
      * @return array
      */
