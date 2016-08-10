@@ -135,6 +135,20 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(6, wstring::from('abcabcAbc')->lastIndexOf('AB', true));
     }
 
+    public function testEnsurePrefix()
+    {
+        $this->assertEquals("abc", (string) wstring::from('abc')->ensurePrefix('a'));
+        $this->assertEquals("Aabc", (string) wstring::from('abc')->ensurePrefix('A'));
+        $this->assertEquals("abc", (string) wstring::from('abc')->ensurePrefix('A', true));
+    }
+
+    public function testEnsureSuffix()
+    {
+        $this->assertEquals("abc", (string) wstring::from('abc')->ensureSuffix('c'));
+        $this->assertEquals("abcC", (string) wstring::from('abc')->ensureSuffix('C'));
+        $this->assertEquals("abc", (string) wstring::from('abc')->ensureSuffix('c', true));
+    }
+
     public function testAppend()
     {
         $this->assertEquals("abcdef", (string) wstring::from('abc')->append('def'));

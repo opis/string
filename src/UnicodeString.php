@@ -284,6 +284,46 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
+     * @param string|UnicodeString $text
+     * @param bool $ignoreCase
+     * @return UnicodeString
+     * @throws Exception
+     */
+    public function ensurePrefix($text, $ignoreCase = false)
+    {
+        $text = static::from($text);
+
+        if(!$this->startsWith($text, $ignoreCase)){
+            $cp = array_merge($text->codes, $this->codes);
+            $ch = array_merge($text->chars, $this->chars);
+
+            return new static($cp, $ch);
+        }
+
+        return clone $this;
+    }
+
+    /**
+     * @param string|UnicodeString $text
+     * @param bool $ignoreCase
+     * @return UnicodeString
+     * @throws Exception
+     */
+    public function ensureSuffix($text, $ignoreCase = false)
+    {
+        $text = static::from($text);
+
+        if(!$this->endsWith($text, $ignoreCase)){
+            $cp = array_merge($this->codes, $text->codes);
+            $ch = array_merge($this->chars, $text->chars);
+
+            return new static($cp, $ch);
+        }
+
+        return clone $this;
+    }
+
+    /**
      * @param UnicodeString|string $text
      * @return UnicodeString
      */
