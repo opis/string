@@ -524,6 +524,36 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
+     * @param string|UnicodeString $char
+     * @param int $count
+     * @return UnicodeString
+     */
+    public function pad($char, $count)
+    {
+        return $this->doPad($char, $count);
+    }
+
+    /**
+     * @param string|UnicodeString $char
+     * @param int $count
+     * @return UnicodeString
+     */
+    public function padLeft($char, $count)
+    {
+        return $this->doPad($char, $count, true, false);
+    }
+
+    /**
+     * @param string|UnicodeString $char
+     * @param int $count
+     * @return UnicodeString
+     */
+    public function padRight($char, $count)
+    {
+        return $this->doPad($char, $count, false, true);
+    }
+
+    /**
      * @return bool
      */
     public function isLowerCase()
@@ -748,6 +778,35 @@ class UnicodeString implements ArrayAccess
 
         $cp = array_slice($cp, $start, $end - $start);
         $ch = array_slice($this->chars, $start, $end - $start);
+
+        return new static($cp, $ch);
+    }
+
+    /**
+     * @param string|UnicodeString $pad
+     * @param int $count
+     * @param bool $left
+     * @param bool $right
+     * @throws Exception
+     * @return UnicodeString
+     */
+    protected function doPad($pad, $count, $left = true, $right = true)
+    {
+        $pad = static::from($pad);
+
+        if($count < 0){
+            $count = 0;
+        }
+
+        $pcp = $pch = array();
+
+        for ($i = 0; $i < $count; $i++){
+            $pcp = array_merge($pcp, $pad->codes);
+            $pch = array_merge($pch, $pad->chars);
+        }
+
+        $cp = array_merge(($left ? $pcp : array()), $this->codes, ($right ? $pcp : array()));
+        $ch = array_merge(($left ? $pch : array()), $this->chars, ($right ? $pch : array()));
 
         return new static($cp, $ch);
     }
