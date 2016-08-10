@@ -243,6 +243,16 @@ use Opis\String\UnicodeString as wstring;
 echo wstring::from('abc')->prepend('def'); //> defabc
 ```
 
+##### insert($text, $index)
+
+Insert the given string at the specified position
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+echo wstring::from('abcdef')->prepend('x', 3); //> abcxdef
+```
+
 ##### trim($character_mask = " \t\n\r\0\x0B")
 
 Trim from both sides of the string, the characters specified in the character mask
@@ -317,6 +327,16 @@ use Opis\String\UnicodeString as wstring;
 
 echo wstring::from('abc')->repeat(); //> abcabc
 echo wstring::from('abc')->repeat(2); //> abcabcabc
+```
+
+##### remove($index, $length)
+
+Remove an arbitrary amount of chars starting at a given position
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+echo wstring::from('abcdef')->remove(2, 3); //> abf
 ```
 
 ##### split($char = '')
