@@ -27,7 +27,7 @@ This library is available on [Packagist](https://packagist.org/packages/opis/str
 ```json
 {
     "require": {
-        "opis/string": "^1.3.0"
+        "opis/string": "^1.4.0"
     }
 }
 ```
@@ -221,6 +221,40 @@ echo wstring::from('AbcAbcabc')->lastIndexOf('A'); //> 3
 
 // Case insensitive
 echo wstring::from('AbcAbcabc')->lastIndexOf('A', true); //> 6
+```
+
+##### ensurePrefix($text, $ignoreCase = false)
+
+Make sure that the current string is prefixed with the given text.
+The checking can be done both in a case sensitive and case insensitive manner.
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+// Case sensitive
+echo wstring::from('abc')->ensurePrefix('a'); //> abc
+echo wstring::from('abc')->ensurePrefix('A'); //> Aabc
+
+//Case insensitive
+echo wstring::from('abc')->ensurePrefix('A', true); //> abc
+echo wstring::from('Abc')->ensurePrefix('a', true); //> Abc
+```
+
+##### ensureSuffix($text, $ignoreCase = false)
+
+Make sure that the current string is suffixed with the given text.
+The checking can be done both in a case sensitive and case insensitive manner.
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+// Case sensitive
+echo wstring::from('abcd')->ensureSuffix('d'); //> abcd
+echo wstring::from('abcd')->ensureSuffix('d'); //> abcdD
+
+//Case insensitive
+echo wstring::from('abcd')->ensureSuffix('D', true); //> abcd
+echo wstring::from('abcD')->ensureSuffix('d', true); //> abcD
 ```
 
 ##### append($text)
