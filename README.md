@@ -27,7 +27,7 @@ This library is available on [Packagist](https://packagist.org/packages/opis/str
 ```json
 {
     "require": {
-        "opis/string": "^1.2.0"
+        "opis/string": "^1.3.0"
     }
 }
 ```
