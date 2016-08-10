@@ -1,3 +1,16 @@
+## v1.4.0 - 2016.08.10
+### Added
+-  `ensurePrefix` and `ensureSuffix` methods
+
+### Removed
+- Nothing
+
+### Changed
+- Nothing
+
+### Fixed
+- Nothing
+
 ## v1.3.0 - 2016.08.10
 ### Added
 - `insert` method
