@@ -2,7 +2,7 @@
 ### Added
 - `insert` method
 - `remove` method
--  `pad`, `padLeft` and `padRight` method
+-  `padLeft` and `padRight` method
 
 ### Removed
 - Nothing
