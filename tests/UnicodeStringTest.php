@@ -201,22 +201,24 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("ăĂâÂŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(4, 3));
     }
 
-    public function testPad()
-    {
-        $this->assertEquals("xxxabcxxx", (string) wstring::from("abc")->pad('x', 3));
-        $this->assertEquals("xxxabcxxx", (string) wstring::from("abc")->pad('xxx', 1));
-    }
-
     public function testPadLeft()
     {
-        $this->assertEquals("xxxabc", (string) wstring::from("abc")->padLeft('x', 3));
-        $this->assertEquals("xxxabc", (string) wstring::from("abc")->padLeft('xxx', 1));
+        $this->assertEquals("xxabc", (string) wstring::from("abc")->padLeft(5, 'x'));
+        $this->assertEquals("xyabc", (string) wstring::from("abc")->padLeft(5, 'xyz'));
+        $this->assertEquals("xyzxabc", (string) wstring::from("abc")->padLeft(7, 'xyz'));
+        $this->assertEquals("", (string) wstring::from("abc")->padLeft(0, 'x'));
+        $this->assertEquals("", (string) wstring::from("abc")->padLeft(-1, 'x'));
+        $this->assertEquals("c", (string) wstring::from("abc")->padLeft(1, 'x'));
     }
 
     public function testRight()
     {
-        $this->assertEquals("abcxxx", (string) wstring::from("abc")->padRight('x', 3));
-        $this->assertEquals("abcxxx", (string) wstring::from("abc")->padRight('xxx', 1));
+        $this->assertEquals("abcxx", (string) wstring::from("abc")->padRight(5, 'x'));
+        $this->assertEquals("abcxy", (string) wstring::from("abc")->padRight(5, 'xyz'));
+        $this->assertEquals("abcxyzx", (string) wstring::from("abc")->padRight(7, 'xyz'));
+        $this->assertEquals("", (string) wstring::from("abc")->padRight(0, 'x'));
+        $this->assertEquals("", (string) wstring::from("abc")->padRight(-1, 'x'));
+        $this->assertEquals("a", (string) wstring::from("abc")->padRight(1, 'x'));
     }
 
     public function testSplit()
