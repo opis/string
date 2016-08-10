@@ -799,6 +799,10 @@ class UnicodeString implements ArrayAccess
 
         $pad = static::from($pad);
 
+        if($pad->isEmpty()){
+            $pad = static::from(' ');
+        }
+
         $noch = $length - $this->length;
         $mod = $noch % $pad->length;
         $times = ($noch - $mod) / $pad->length;
