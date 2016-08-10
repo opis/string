@@ -1,3 +1,17 @@
+## v1.3.0 - 2016.08.10
+### Added
+- `insert` method
+- `remove` method
+
+### Removed
+- Nothing
+
+### Changed
+- Nothing
+
+### Fixed
+- Nothing
+
 ## v1.2.0 - 2016.08.08
 ### Added
 - `repeat` method
