@@ -339,6 +339,26 @@ use Opis\String\UnicodeString as wstring;
 echo wstring::from('abcdef')->remove(2, 3); //> abf
 ```
 
+##### padLeft($length, $char = ' ')
+
+Pads the string to a given length using the specified string.
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+echo wstring::from('abc')->padLeft(5, 'x'); //> xxabc
+```
+
+##### padRight($length, $char = ' ')
+
+Pads the string to a given length using the specified string.
+
+```php
+use Opis\String\UnicodeString as wstring;
+
+echo wstring::from('abc')->padRight(5, 'x'); //> abcxx
+```
+
 ##### split($char = '')
 
 Split the current string using the given delimiter and return an array of
