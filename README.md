@@ -250,7 +250,7 @@ Insert the given string at the specified position
 ```php
 use Opis\String\UnicodeString as wstring;
 
-echo wstring::from('abcdef')->prepend('x', 3); //> abcxdef
+echo wstring::from('abcdef')->insert('x', 3); //> abcxdef
 ```
 
 ##### trim($character_mask = " \t\n\r\0\x0B")
