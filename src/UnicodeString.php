@@ -524,33 +524,23 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
-     * @param string|UnicodeString $char
-     * @param int $count
+     * @param int $length
+     * @param string $char
      * @return UnicodeString
      */
-    public function pad($char, $count)
+    public function padLeft($length, $char = ' ')
     {
-        return $this->doPad($char, $count);
+        return $this->doPad($length, $char, true);
     }
 
     /**
-     * @param string|UnicodeString $char
-     * @param int $count
+     * @param int $length
+     * @param string $char
      * @return UnicodeString
      */
-    public function padLeft($char, $count)
+    public function padRight($length, $char = ' ')
     {
-        return $this->doPad($char, $count, true, false);
-    }
-
-    /**
-     * @param string|UnicodeString $char
-     * @param int $count
-     * @return UnicodeString
-     */
-    public function padRight($char, $count)
-    {
-        return $this->doPad($char, $count, false, true);
+        return $this->doPad($length, $char, false);
     }
 
     /**
@@ -783,30 +773,56 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
-     * @param string|UnicodeString $pad
-     * @param int $count
+     * @param $length
+     * @param $pad
      * @param bool $left
-     * @param bool $right
-     * @throws Exception
      * @return UnicodeString
+     * @throws Exception
      */
-    protected function doPad($pad, $count, $left = true, $right = true)
+    protected function doPad($length, $pad, $left = true)
     {
+        if($length <= 0){
+            return new static(array(), array());
+        }
+
+        if($length === $this->length){
+            return clone $this;
+        }
+
+        if($length < $this->length){
+            if($left){
+                return $this->substring($this->length - $length);
+            } else {
+                return $this->substring(0, $length);
+            }
+        }
+
         $pad = static::from($pad);
 
-        if($count < 0){
-            $count = 0;
+        $noch = $length - $this->length;
+        $mod = $noch % $pad->length;
+        $times = ($noch - $mod) / $pad->length;
+
+        $padchars = array();
+        $padcodes = array();
+
+        for($i = 0; $i < $times; $i++){
+            $padcodes = array_merge($padcodes, $pad->codes);
+            $padchars = array_merge($padchars, $pad->chars);
         }
 
-        $pcp = $pch = array();
-
-        for ($i = 0; $i < $count; $i++){
-            $pcp = array_merge($pcp, $pad->codes);
-            $pch = array_merge($pch, $pad->chars);
+        if($mod != 0){
+            $padcodes = array_merge($padcodes, array_slice($pad->codes, 0, $mod));
+            $padchars = array_merge($padchars, array_slice($pad->chars, 0, $mod));
         }
 
-        $cp = array_merge(($left ? $pcp : array()), $this->codes, ($right ? $pcp : array()));
-        $ch = array_merge(($left ? $pch : array()), $this->chars, ($right ? $pch : array()));
+        if($left){
+            $cp = array_merge($padcodes, $this->codes);
+            $ch = array_merge($padchars, $this->chars);
+        } else {
+            $cp = array_merge($this->codes, $padcodes);
+            $ch = array_merge($this->chars, $padchars);
+        }
 
         return new static($cp, $ch);
     }
