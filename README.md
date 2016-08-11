@@ -5,12 +5,12 @@ Opis String
 [![Latest Unstable Version](https://poser.pugx.org/opis/string/v/unstable.png)](//packagist.org/packages/opis/string)
 [![License](https://poser.pugx.org/opis/string/license.png)](https://packagist.org/packages/opis/string)
 
-Multi-byte string manipulation
-------------------------------
+Manipulate multibyte strings
+----------------------------
 
 This tiny library allows you to manipulate strings encoded in multi-byte 
 encodings, using an OO paradigm. The library has **no dependencies** to 
-mbstring or similar PHP extensions.
+*mbstring* or similar PHP extensions and is compatible with PHP5.3+, PHP7.0 and HHVM.
 
 ### License
 
