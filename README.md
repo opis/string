@@ -8,8 +8,8 @@ Opis String
 Manipulate multibyte strings
 ----------------------------
 
-This tiny library allows you to manipulate strings encoded in multi-byte 
-encodings, using an OO paradigm. The library has **no dependencies** to 
+This tiny library allows you to manipulate multibyte encoded strings, 
+using an OO paradigm. The library has **no dependencies** to 
 *mbstring* or similar PHP extensions and is compatible with PHP 5.3+, PHP 7.0 and HHVM.
 
 ### License
