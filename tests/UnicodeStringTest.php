@@ -107,6 +107,11 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse(wstring::from('abcde')->endsWith('ce'));
     }
 
+    public function testEndsWithOffsetShouldBeLessThanZero()
+    {
+        $this->assertFalse(wstring::from('abcde')->endsWith('ceffff'));
+    }
+
     public function testEndsWithCaseInsensitive()
     {
         $this->assertTrue(wstring::from('abcde')->endsWith('DE', true));
@@ -119,6 +124,16 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(3, wstring::from('abcabc')->indexOf('ab', 1));
     }
 
+    public function testIndexOfShouldBeFalse()
+    {
+        $this->assertFalse(wstring::from('abcabc')->indexOf('abcdefg'));
+    }
+
+    public function testIndexOfOffsetShouldBeChangedIntoZero()
+    {
+        $this->assertEquals(0, wstring::from('abcabc')->indexOf('ab', -1));
+    }
+
     public function testIndexOfCaseInsensitive()
     {
         $this->assertEquals(0, wstring::from('abcabc')->indexOf('AB', 0, true));
@@ -128,6 +143,11 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
     public function testLastIndexOf()
     {
         $this->assertEquals(3, wstring::from('abcabcAbc')->lastIndexOf('ab'));
+    }
+
+    public function testLastIndexOfShouldBeFalse()
+    {
+        $this->assertFalse(wstring::from('abcabcAbc')->lastIndexOf('abcdefghijk'));
     }
 
     public function testLastIndexOfCaseInsensitive()
@@ -195,9 +215,19 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("0a0x0", (string) wstring::from("0a0a0")->replace("a", "x", 2));
     }
 
+    public function testReplaceWithSubjectIsNotInTheSting()
+    {
+        $this->assertInstanceOf("Opis\String\UnicodeString", wstring::from("0a0a0")->replace("x", "a"));
+    }
+
     public function testReplaceAll()
     {
         $this->assertEquals("0x0x0", (string) wstring::from("0a0a0")->replaceAll("a", "x"));
+    }
+
+    public function testReplaceAllWithSubjectIsNotInTheSting()
+    {
+        $this->assertInstanceOf("Opis\String\UnicodeString", wstring::from("0a0a0")->replaceAll("x", "a"));
     }
 
     public function testReverse()
@@ -212,11 +242,21 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("ăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢ", (string) wstring::from("ăĂâÂîÎşŞţŢ")->repeat(2));
     }
 
+    public function testRepeatTimesShouldBeChangedIntoOne()
+    {
+        $this->assertEquals("abcabc", (string) wstring::from("abc")->repeat(-1));
+    }
+
     public function testRemove()
     {
         $this->assertEquals("ÂîÎşŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(0, 3));
         $this->assertEquals("ăĂâÂîÎşŞţ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(9, 3));
         $this->assertEquals("ăĂâÂŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(4, 3));
+    }
+
+    public function testRemoveIndexLengthShouldBeChangedIntoZero()
+    {
+        $this->assertEquals("ăĂâÂîÎşŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(-1, -1));
     }
 
     public function testPadLeft()
@@ -227,6 +267,16 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("", (string) wstring::from("abc")->padLeft(0, 'x'));
         $this->assertEquals("", (string) wstring::from("abc")->padLeft(-1, 'x'));
         $this->assertEquals("c", (string) wstring::from("abc")->padLeft(1, 'x'));
+    }
+
+    public function testPadLeftEqualWithStringLength()
+    {
+        $this->assertInstanceOf("Opis\String\UnicodeString", wstring::from("xxabc")->padLeft(5, 'x'));
+    }
+
+    public function testPadLeftWithEmptyPad()
+    {
+        $this->assertEquals(" xxabc", (string) wstring::from("xxabc")->padLeft(6, ''));
     }
 
     public function testRight()
@@ -280,15 +330,115 @@ class UnicodeStringTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('abc', wstring::from('AbC')->toLower());
     }
 
+    public function testToLowerWithIsLowerCache()
+    {
+        $wstr = new wstring(array('UTF-8'), array('abc'));
+        $wstr->isLowerCase();
+        $this->assertInstanceOf("Opis\String\UnicodeString", $wstr->toLower());
+    }
+
+    public function testToUpperWithIsUpperCache()
+    {
+        $wstr = new wstring(array('UTF-8'), array('abc'));
+        $wstr->isUpperCase();
+        $this->assertInstanceOf("Opis\String\UnicodeString", $wstr->toUpper());
+    }
+
     public function testToAscii()
     {
         $this->assertEquals("aAaAiIsStT", wstring::from("ăĂâÂîÎşŞţŢ")->toAscii());
+    }
+
+    public function testToAsciiWithIsAsciiCache()
+    {
+        $wstr = new wstring(array('UTF-8'), array('abc'));
+        $wstr->isAscii();
+        $this->assertInstanceOf("Opis\String\UnicodeString", $wstr->toAscii());
     }
 
     public function testIsAscii()
     {
         $this->assertTrue(wstring::from('abcde')->isAscii());
         $this->assertFalse(wstring::from('abcîÎşa')->isAscii());
+    }
+
+    public function testIsAsciiWithCache()
+    {
+        $wstr = new wstring(array('UTF-8'), array('abc'));
+        $wstr->isAscii();
+        $this->assertTrue($wstr->isAscii());
+    }
+
+    public function testStringWithExistedCharacter()
+    {
+        $wstr = new wstring(array('abcd'), array('bcd'));
+        $this->assertTrue(isset($wstr[0]));
+    }
+
+    public function testStringWithChars()
+    {
+        $wstr = new wstring(array('abcd'), array('bcd'));
+        $this->assertEquals(array('bcd'), $wstr->chars());
+    }
+
+    public function testStringWithCodePoints()
+    {
+        $wstr = new wstring(array('abcd'), array('bcd'));
+        $this->assertEquals(array('abcd'), $wstr->codePoints());
+    }
+
+    public function testStringOffsetChar()
+    {
+        $wstr = new wstring(array('abcd'), array('bcd'));
+        $this->assertEquals('abcd', $wstr(0));
+    }
+
+    /**
+     * @expectedException        \Exception
+     * @expectedExceptionMessage Invalid operation
+     */
+    public function testSetStringShouldReturnInvalidOperation()
+    {
+        $wstr = new wstring(array('abcd'), array('bcd'));
+        $wstr[] = 'a';
+    }
+
+    /**
+     * @expectedException        \Exception
+     * @expectedExceptionMessage Invalid operation
+     */
+    public function testUnsetStringShouldReturnInvalidOperation()
+    {
+        $wstr = new wstring(array('abcd'), array('bcd'));
+        unset($wstr[0]);
+    }
+
+    /**
+     * @expectedException        \Exception
+     * @expectedExceptionMessage Could not convert string from 'error_encoding' encoding to UTF-8 encoding
+     */
+    public function testFromStringWithInvalidEncoding()
+    {
+        $wstr = wstring::from('abcd', 'error_encoding');
+    }
+
+    public function testFromStringWithE0Character()
+    {
+        $this->assertEquals("\xE0\xE0\xE0", (string) wstring::from("\xE0\xE0\xE0")->replace("E", "x"));
+    }
+
+    public function testFromStringWithF0Character()
+    {
+        $this->assertEquals("\xF0\xF0\xF0\xF0", (string) wstring::from("\xF0\xF0\xF0\xF0")->replace("F", "x"));
+    }
+
+    /**
+     * @expectedException        \Exception
+     * @expectedExceptionMessage Invalid UTF-8 string
+     */
+    public function testFromStringWithInvalidUtf8String()
+    {
+        wstring::from("\xA0\xA0\xA0\xA0");
     }
 
 }

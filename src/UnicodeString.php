@@ -732,7 +732,7 @@ class UnicodeString implements ArrayAccess
         }
 
         if($encoding !== 'UTF-8'){
-            if(false === $string = iconv($encoding, 'UTF-8', $string)){
+            if(false === $string = @iconv($encoding, 'UTF-8', $string)){
                 throw new Exception("Could not convert string from '$encoding' encoding to UTF-8 encoding");
             }
         }

@@ -8,13 +8,13 @@ Opis String
 Manipulate multibyte strings
 ----------------------------
 
-This tiny library allows you to manipulate multibyte encoded strings, 
-using an OO paradigm. The library has **no dependencies** to 
+This tiny library allows you to manipulate multibyte encoded strings,
+using an OO paradigm. The library has **no dependencies** to
 *mbstring* or similar PHP extensions and is compatible with PHP 5.3+, PHP 7.0 and HHVM.
 
 ### License
 
-**Opis String** is licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0). 
+**Opis String** is licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 ### Requirements
 
@@ -42,8 +42,8 @@ use Opis\String\UnicodeString as wstring;
 $str = wstring::from('ăĂâÂîÎşŞţŢ');
 ```
 
-By default, it's assumed that your string is encoded using UTF-8. 
-If your string is encoded using another encoding, you can pass the name 
+By default, it's assumed that your string is encoded using UTF-8.
+If your string is encoded using another encoding, you can pass the name
 of the encoding as the second argument of the `from` method.
 
 ```php
@@ -52,7 +52,7 @@ use Opis\String\UnicodeString as wstring;
 $str = wstring::from($string, 'ISO-8859-1');
 ```
 
-Once created, you can use the resulted object in the same manner in which 
+Once created, you can use the resulted object in the same manner in which
 you would use a regular string.
 
 ```php
@@ -130,7 +130,7 @@ if($str->equals('abcd', true)){
 
 ##### compareTo($text, $ignoreCase = false)
 
-Compare the current string with a given string and returns `0` if the 
+Compare the current string with a given string and returns `0` if the
 strings are equal, `1` if the current string is greater and `-1` otherwise
 
 ```php
@@ -185,7 +185,7 @@ if($str->endsWith('abcd', true)){
 
 ##### indexOf($text, $offset = 0, $ignoreCase = false)
 
-Find the first occurrence of the given string within the current string 
+Find the first occurrence of the given string within the current string
 
 ```php
 use Opis\String\UnicodeString as wstring;
@@ -212,7 +212,7 @@ echo wstring::from('abcABC')->indexOf('A', 0, true); //> 0
 
 ##### lastIndexOf($text, $ignoreCase = false)
 
-Find the last occurrence of the given string within the current string 
+Find the last occurrence of the given string within the current string
 
 ```php
 use Opis\String\UnicodeString as wstring;
