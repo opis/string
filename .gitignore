@@ -1,4 +1,6 @@
-# Created by .ignore support plugin (hsz.mobi)
 .idea/
 vendor/
+_site/
+shared/
+Gemfile.lock
 composer.lock
