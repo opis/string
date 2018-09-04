@@ -1,3 +1,13 @@
+## v1.5.0 - 2018.09.04
+### Removed
+- Support for PHP 5.x
+
+### Added
+- Type hints
+
+### Changed
+-Targeted PHP version is ^7.0
+
 ## v1.4.0 - 2016.08.10
 ### Added
 -  `ensurePrefix` and `ensureSuffix` methods

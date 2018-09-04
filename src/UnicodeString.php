@@ -18,7 +18,7 @@
 namespace Opis\String;
 
 use ArrayAccess;
-use Exception;
+use RuntimeException;
 
 class UnicodeString implements ArrayAccess
 {
@@ -34,10 +34,10 @@ class UnicodeString implements ArrayAccess
 
     const CACHE_TO_ASCII = 5;
 
-    /** @var array  */
+    /** @var array */
     protected $codes;
 
-    /** @var array  */
+    /** @var array */
     protected $chars;
 
     /** @var string|null */
@@ -47,8 +47,12 @@ class UnicodeString implements ArrayAccess
     protected $length;
 
     /** @var array */
-    protected $cache = array();
+    protected $cache = [];
 
+    /**
+     * @param array $codes
+     * @param array $chars
+     */
     public function __construct(array $codes, array $chars)
     {
         $this->codes = $codes;
@@ -77,34 +81,32 @@ class UnicodeString implements ArrayAccess
     /**
      * @param mixed $offset
      * @param mixed $value
-     * @throws Exception
      */
     public function offsetSet($offset, $value)
     {
-        throw new Exception("Invalid operation");
+        throw new RuntimeException("Invalid operation");
     }
 
     /**
      * @param mixed $offset
-     * @throws Exception
      */
     public function offsetUnset($offset)
     {
-        throw new Exception("Invalid operation");
+        throw new RuntimeException("Invalid operation");
     }
 
     /**
-     * @return array
+     * @return string[]
      */
-    public function chars()
+    public function chars(): array
     {
         return $this->chars;
     }
 
     /**
-     * @return array
+     * @return int[]
      */
-    public function codePoints()
+    public function codePoints(): array
     {
         return $this->codes;
     }
@@ -112,7 +114,7 @@ class UnicodeString implements ArrayAccess
     /**
      * @return int
      */
-    public function length()
+    public function length(): int
     {
         return $this->length;
     }
@@ -120,7 +122,7 @@ class UnicodeString implements ArrayAccess
     /**
      * @return bool
      */
-    public function isEmpty()
+    public function isEmpty(): bool
     {
         return $this->length === 0;
     }
@@ -130,11 +132,11 @@ class UnicodeString implements ArrayAccess
      * @param bool $ignoreCase
      * @return bool
      */
-    public function equals($text, $ignoreCase = false)
+    public function equals($text, bool $ignoreCase = false): bool
     {
         $text = static::from($text);
 
-        if($ignoreCase){
+        if ($ignoreCase) {
             return $this->toLower()->equals($text->toLower());
         }
 
@@ -146,20 +148,20 @@ class UnicodeString implements ArrayAccess
      * @param bool $ignoreCase
      * @return int
      */
-    public function compareTo($text, $ignoreCase = false)
+    public function compareTo($text, bool $ignoreCase = false): int
     {
         $text = static::from($text);
 
-        if($this->length !== $text->length){
+        if ($this->length !== $text->length) {
             return $this->length > $text->length ? 1 : -1;
         }
 
-        if($ignoreCase){
+        if ($ignoreCase) {
             return $this->toLower()->compareTo($text->toLower());
         }
 
-        for($i = 0, $l = $this->length; $i < $l; $i++){
-            if($this->codes[$i] !== $text->codes[$i]){
+        for ($i = 0, $l = $this->length; $i < $l; $i++) {
+            if ($this->codes[$i] !== $text->codes[$i]) {
                 return $this->codes[$i] > $text->codes[$i] ? 1 : -1;
             }
         }
@@ -172,7 +174,7 @@ class UnicodeString implements ArrayAccess
      * @param bool $ignoreCase
      * @return bool
      */
-    public function contains($text, $ignoreCase = false)
+    public function contains($text, bool $ignoreCase = false): bool
     {
         return $this->indexOf($text, 0, $ignoreCase) !== false;
     }
@@ -182,7 +184,7 @@ class UnicodeString implements ArrayAccess
      * @param bool $ignoreCase
      * @return bool
      */
-    public function startsWith($text, $ignoreCase = false)
+    public function startsWith($text, bool $ignoreCase = false): bool
     {
         return $this->indexOf($text, 0, $ignoreCase) === 0;
     }
@@ -192,13 +194,13 @@ class UnicodeString implements ArrayAccess
      * @param bool $ignoreCase
      * @return bool
      */
-    public function endsWith($text, $ignoreCase = false)
+    public function endsWith($text, bool $ignoreCase = false): bool
     {
         $text = static::from($text);
 
         $offset = $this->length - $text->length;
 
-        if($offset < 0){
+        if ($offset < 0) {
             return false;
         }
 
@@ -210,38 +212,37 @@ class UnicodeString implements ArrayAccess
      * @param int $offset
      * @param bool $ignoreCase
      * @return int|false
-     * @throws Exception
      */
-    public function indexOf($text, $offset = 0, $ignoreCase = false)
+    public function indexOf($text, int $offset = 0, bool $ignoreCase = false)
     {
         $text = static::from($text);
 
-        if($this->length < $text->length){
+        if ($this->length < $text->length) {
             return false;
         }
 
-        if($ignoreCase){
+        if ($ignoreCase) {
             return $this->toLower()->indexOf($text->toLower(), $offset);
         }
 
-        if($offset < 0){
+        if ($offset < 0) {
             $offset = 0;
         }
 
         $cp1 = $this->codes;
         $cp2 = $text->codes;
 
-        for($i = $offset, $l = $this->length - $text->length; $i <= $l; $i++){
+        for ($i = $offset, $l = $this->length - $text->length; $i <= $l; $i++) {
             $match = true;
 
-            for($j = 0, $f = $text->length; $j < $f; $j++){
-                if($cp1[$i + $j] != $cp2[$j]){
+            for ($j = 0, $f = $text->length; $j < $f; $j++) {
+                if ($cp1[$i + $j] != $cp2[$j]) {
                     $match = false;
                     break;
                 }
             }
 
-            if($match){
+            if ($match) {
                 return $i;
             }
         }
@@ -254,23 +255,23 @@ class UnicodeString implements ArrayAccess
      * @param bool $ignoreCase
      * @return false|int
      */
-    public function lastIndexOf($text, $ignoreCase = false)
+    public function lastIndexOf($text, bool $ignoreCase = false)
     {
         $text = static::from($text);
 
-        if($this->length < $text->length){
+        if ($this->length < $text->length) {
             return false;
         }
 
-        if($ignoreCase){
+        if ($ignoreCase) {
             return $this->toLower()->lastIndexOf($text->toLower());
         }
 
         $index = false;
         $offset = 0;
 
-        while(true){
-            if(false === $offset = $this->indexOf($text, $offset)){
+        while (true) {
+            if (false === $offset = $this->indexOf($text, $offset)) {
                 break;
             }
             $index = $offset;
@@ -284,13 +285,12 @@ class UnicodeString implements ArrayAccess
      * @param string|UnicodeString $text
      * @param bool $ignoreCase
      * @return UnicodeString
-     * @throws Exception
      */
-    public function ensurePrefix($text, $ignoreCase = false)
+    public function ensurePrefix($text, bool $ignoreCase = false): self
     {
         $text = static::from($text);
 
-        if(!$this->startsWith($text, $ignoreCase)){
+        if (!$this->startsWith($text, $ignoreCase)) {
             $cp = array_merge($text->codes, $this->codes);
             $ch = array_merge($text->chars, $this->chars);
 
@@ -304,13 +304,12 @@ class UnicodeString implements ArrayAccess
      * @param string|UnicodeString $text
      * @param bool $ignoreCase
      * @return UnicodeString
-     * @throws Exception
      */
-    public function ensureSuffix($text, $ignoreCase = false)
+    public function ensureSuffix($text, bool $ignoreCase = false): self
     {
         $text = static::from($text);
 
-        if(!$this->endsWith($text, $ignoreCase)){
+        if (!$this->endsWith($text, $ignoreCase)) {
             $cp = array_merge($this->codes, $text->codes);
             $ch = array_merge($this->chars, $text->chars);
 
@@ -324,7 +323,7 @@ class UnicodeString implements ArrayAccess
      * @param UnicodeString|string $text
      * @return UnicodeString
      */
-    public function append($text)
+    public function append($text): self
     {
         $text = static::from($text);
         $cp = array_merge($this->codes, $text->codes);
@@ -337,7 +336,7 @@ class UnicodeString implements ArrayAccess
      * @param UnicodeString|string $text
      * @return UnicodeString
      */
-    public function prepend($text)
+    public function prepend($text): self
     {
         $text = static::from($text);
         $cp = array_merge($text->codes, $this->codes);
@@ -351,13 +350,13 @@ class UnicodeString implements ArrayAccess
      * @param int $index
      * @return UnicodeString
      */
-    public function insert($text, $index)
+    public function insert($text, int $index): self
     {
-        if($index <= 0){
+        if ($index <= 0) {
             return $this->prepend($text);
         }
 
-        if($index >= $this->length){
+        if ($index >= $this->length) {
             return $this->append($text);
         }
 
@@ -379,7 +378,7 @@ class UnicodeString implements ArrayAccess
      * @param string|UnicodeString $character_mask
      * @return UnicodeString
      */
-    public function trim($character_mask = " \t\n\r\0\x0B")
+    public function trim($character_mask = " \t\n\r\0\x0B"): self
     {
         return $this->doTrim($character_mask);
     }
@@ -388,7 +387,7 @@ class UnicodeString implements ArrayAccess
      * @param string|UnicodeString $character_mask
      * @return UnicodeString
      */
-    public function trimLeft($character_mask = " \t\n\r\0\x0B")
+    public function trimLeft($character_mask = " \t\n\r\0\x0B"): self
     {
         return $this->doTrim($character_mask, true, false);
     }
@@ -397,7 +396,7 @@ class UnicodeString implements ArrayAccess
      * @param string|UnicodeString $character_mask
      * @return UnicodeString
      */
-    public function trimRight($character_mask = " \t\n\r\0\x0B")
+    public function trimRight($character_mask = " \t\n\r\0\x0B"): self
     {
         return $this->doTrim($character_mask, false, true);
     }
@@ -407,14 +406,13 @@ class UnicodeString implements ArrayAccess
      * @param string|UnicodeString $replace
      * @param int $offset
      * @return UnicodeString
-     * @throws Exception
      */
-    public function replace($subject, $replace, $offset = 0)
+    public function replace($subject, $replace, int $offset = 0): self
     {
         $subject = static::from($subject);
         $replace = static::from($replace);
 
-        if(false === $pos = $this->indexOf($subject, $offset)){
+        if (false === $pos = $this->indexOf($subject, $offset)) {
             return clone $this;
         }
 
@@ -434,21 +432,21 @@ class UnicodeString implements ArrayAccess
      * @param string|UnicodeString $replace
      * @return UnicodeString
      */
-    public function replaceAll($subject, $replace)
+    public function replaceAll($subject, $replace): self
     {
         $subject = static::from($subject);
         $replace = static::from($replace);
 
-        if(false === $offset = $this->indexOf($subject) || $subject->isEmpty()){
+        if (false === $offset = $this->indexOf($subject) || $subject->isEmpty()) {
             return clone $this;
         }
 
         $text = $this;
 
-        do{
+        do {
             $text = $text->replace($subject, $replace, $offset);
             $offset = $text->indexOf($subject, $offset + $replace->length);
-        } while($offset !== false);
+        } while ($offset !== false);
 
         return $text;
     }
@@ -456,7 +454,7 @@ class UnicodeString implements ArrayAccess
     /**
      * @return UnicodeString
      */
-    public function reverse()
+    public function reverse(): self
     {
         $cp = array_reverse($this->codes);
         $ch = array_reverse($this->chars);
@@ -469,16 +467,16 @@ class UnicodeString implements ArrayAccess
      * @param int $times
      * @return UnicodeString
      */
-    public function repeat($times = 1)
+    public function repeat(int $times = 1): self
     {
-        if($times < 1){
+        if ($times < 1) {
             $times = 1;
         }
 
         $cp = $this->codes;
         $ch = $this->chars;
 
-        for($i = 0; $i < $times; $i++){
+        for ($i = 0; $i < $times; $i++) {
             $cp = array_merge($cp, $this->codes);
             $ch = array_merge($ch, $this->chars);
         }
@@ -491,13 +489,13 @@ class UnicodeString implements ArrayAccess
      * @param int $length
      * @return UnicodeString
      */
-    public function remove($index, $length)
+    public function remove(int $index, int $length): self
     {
-        if($index < 0){
+        if ($index < 0) {
             $index = 0;
         }
 
-        if($length < 0){
+        if ($length < 0) {
             $length = 0;
         }
 
@@ -514,26 +512,26 @@ class UnicodeString implements ArrayAccess
 
     /**
      * @param string|UnicodeString $char
-     * @return array
+     * @return UnicodeString[]
      */
-    public function split($char = '')
+    public function split($char = ''): array
     {
         $char = static::from($char);
-        $results = array();
+        $results = [];
 
-        if($char->isEmpty()){
-            for($i = 0, $l = $this->length; $i < $l; $i++){
-                $results[] = new static(array($this->codes[$i]), array($this->chars[$i]));
+        if ($char->isEmpty()) {
+            for ($i = 0, $l = $this->length; $i < $l; $i++) {
+                $results[] = new static([$this->codes[$i]], [$this->chars[$i]]);
             }
             return $results;
         }
 
-        if(false === $offset = $this->indexOf($char)){
-            return array(clone $this);
+        if (false === $offset = $this->indexOf($char)) {
+            return [clone $this];
         }
 
         $start = 0;
-        do{
+        do {
             $cp = array_slice($this->codes, $start, $offset - $start);
             $ch = array_slice($this->chars, $start, $offset - $start);
             $results[] = new static($cp, $ch);
@@ -552,7 +550,7 @@ class UnicodeString implements ArrayAccess
      * @param int|null $length
      * @return UnicodeString
      */
-    public function substring($start, $length = null)
+    public function substring(int $start, int $length = null): self
     {
         $cp = array_slice($this->codes, $start, $length);
         $ch = array_slice($this->chars, $start, $length);
@@ -562,20 +560,20 @@ class UnicodeString implements ArrayAccess
 
     /**
      * @param int $length
-     * @param string $char
+     * @param string|UnicodeString $char
      * @return UnicodeString
      */
-    public function padLeft($length, $char = ' ')
+    public function padLeft(int $length, $char = ' '): self
     {
         return $this->doPad($length, $char, true);
     }
 
     /**
      * @param int $length
-     * @param string $char
+     * @param string|UnicodeString $char
      * @return UnicodeString
      */
-    public function padRight($length, $char = ' ')
+    public function padRight($length, $char = ' '): self
     {
         return $this->doPad($length, $char, false);
     }
@@ -583,9 +581,9 @@ class UnicodeString implements ArrayAccess
     /**
      * @return bool
      */
-    public function isLowerCase()
+    public function isLowerCase(): bool
     {
-        if(!isset($this->cache[static::CACHE_IS_LOWER])){
+        if (!isset($this->cache[static::CACHE_IS_LOWER])) {
             $this->cache[static::CACHE_IS_LOWER] = $this->isCase($this->getLowerMap());
         }
 
@@ -595,9 +593,9 @@ class UnicodeString implements ArrayAccess
     /**
      * @return bool
      */
-    public function isUpperCase()
+    public function isUpperCase(): bool
     {
-        if(!isset($this->cache[static::CACHE_IS_UPPER])){
+        if (!isset($this->cache[static::CACHE_IS_UPPER])) {
             $this->cache[static::CACHE_IS_UPPER] = $this->isCase($this->getUpperMap());
         }
 
@@ -607,11 +605,11 @@ class UnicodeString implements ArrayAccess
     /**
      * @return bool
      */
-    public function isAscii()
+    public function isAscii(): bool
     {
-        if(!isset($this->cache[static::CACHE_IS_ASCII])){
-            foreach ($this->codes as $code){
-                if($code >= 0x80){
+        if (!isset($this->cache[static::CACHE_IS_ASCII])) {
+            foreach ($this->codes as $code) {
+                if ($code >= 0x80) {
                     return $this->cache[static::CACHE_IS_ASCII] = false;
                 }
             }
@@ -624,20 +622,20 @@ class UnicodeString implements ArrayAccess
     /**
      * @return UnicodeString
      */
-    public function toAscii()
+    public function toAscii(): self
     {
 
-        if(!isset($this->cache[static::CACHE_TO_ASCII])){
-            if(isset($this->cache[static::CACHE_IS_ASCII]) && $this->cache[static::CACHE_IS_ASCII]){
+        if (!isset($this->cache[static::CACHE_TO_ASCII])) {
+            if (isset($this->cache[static::CACHE_IS_ASCII]) && $this->cache[static::CACHE_IS_ASCII]) {
                 $this->cache[static::CACHE_TO_ASCII] = clone $this;
             } else {
                 $ascii = $this->getAsciiMap();
                 $char = $this->getCharMap();
-                $ch = array();
-                $cp = array();
+                $ch = [];
+                $cp = [];
 
-                foreach ($this->codes as $code){
-                    if(isset($ascii[$code])){
+                foreach ($this->codes as $code) {
+                    if (isset($ascii[$code])) {
                         $cp[] = $c = $ascii[$code];
                         $ch[] = $char[$c];
                     }
@@ -646,10 +644,10 @@ class UnicodeString implements ArrayAccess
                 $instance = new static($cp, $ch);
                 $instance->cache[static::CACHE_IS_ASCII] = true;
 
-                $keys = array(static::CACHE_IS_UPPER, static::CACHE_IS_LOWER);
+                $keys = [static::CACHE_IS_UPPER, static::CACHE_IS_LOWER];
 
-                foreach ($keys as $key){
-                    if(isset($this->cache[$key])){
+                foreach ($keys as $key) {
+                    if (isset($this->cache[$key])) {
                         $instance->cache[$key] = $this->cache[$key];
                     }
                 }
@@ -664,10 +662,10 @@ class UnicodeString implements ArrayAccess
     /**
      * @return UnicodeString
      */
-    public function toLower()
+    public function toLower(): self
     {
-        if(!isset($this->cache[static::CACHE_TO_LOWER])){
-            if(isset($this->cache[static::CACHE_IS_LOWER]) && $this->cache[static::CACHE_IS_LOWER]){
+        if (!isset($this->cache[static::CACHE_TO_LOWER])) {
+            if (isset($this->cache[static::CACHE_IS_LOWER]) && $this->cache[static::CACHE_IS_LOWER]) {
                 $this->cache[static::CACHE_TO_LOWER] = clone $this;
             } else {
                 $this->cache[static::CACHE_TO_LOWER] = $this->toCase($this->getLowerMap(), static::CACHE_IS_LOWER);
@@ -680,10 +678,10 @@ class UnicodeString implements ArrayAccess
     /**
      * @return UnicodeString
      */
-    public function toUpper()
+    public function toUpper(): self
     {
-        if(!isset($this->cache[static::CACHE_TO_UPPER])){
-            if(isset($this->cache[static::CACHE_IS_UPPER]) && $this->cache[static::CACHE_IS_UPPER]){
+        if (!isset($this->cache[static::CACHE_TO_UPPER])) {
+            if (isset($this->cache[static::CACHE_IS_UPPER]) && $this->cache[static::CACHE_IS_UPPER]) {
                 $this->cache[static::CACHE_TO_UPPER] = clone $this;
             } else {
                 $this->cache[static::CACHE_TO_UPPER] = $this->toCase($this->getUpperMap(), static::CACHE_IS_UPPER);
@@ -707,7 +705,7 @@ class UnicodeString implements ArrayAccess
      */
     public function __toString()
     {
-        if($this->string === null){
+        if ($this->string === null) {
             $this->string = implode('', $this->chars);
         }
 
@@ -718,51 +716,50 @@ class UnicodeString implements ArrayAccess
      * @param $string
      * @param string $encoding
      * @return UnicodeString
-     * @throws Exception
      */
     public static function from($string, $encoding = 'UTF-8')
     {
         static $ord;
 
-        if($string instanceof self){
+        if ($string instanceof self) {
             return $string;
         }
 
-        if($encoding !== 'UTF-8'){
-            if(false === $string = @iconv($encoding, 'UTF-8', $string)){
-                throw new Exception("Could not convert string from '$encoding' encoding to UTF-8 encoding");
+        if ($encoding !== 'UTF-8') {
+            if (false === $string = @iconv($encoding, 'UTF-8', $string)) {
+                throw new RuntimeException("Could not convert string from '$encoding' encoding to UTF-8 encoding");
             }
         }
 
-        if($ord === null ){
-            $ord = require __DIR__ .'/../res/ord.php';
+        if ($ord === null) {
+            $ord = require __DIR__ . '/../res/ord.php';
         }
 
-        $codes = $chars = array();
+        $codes = $chars = [];
 
-        for($i = 0, $l = strlen($string); $i < $l; $i++) {
+        for ($i = 0, $l = strlen($string); $i < $l; $i++) {
             $c = $ord[$ch = $string[$i]];
 
-            if(($c & 0x80) == 0){
+            if (($c & 0x80) == 0) {
                 $codes[] = $c;
                 $chars[] = $ch;
-            } elseif (($c & 0xE0) == 0xC0){
+            } elseif (($c & 0xE0) == 0xC0) {
                 $c1 = $ord[$string[++$i]];
                 $codes[] = (($c & 0x1F) << 6) | ($c1 & 0x3F);
                 $chars[] = substr($string, $i - 1, 2);
-            } elseif (($c & 0xF0) == 0xE0){
+            } elseif (($c & 0xF0) == 0xE0) {
                 $c1 = $ord[$string[++$i]];
                 $c2 = $ord[$string[++$i]];
                 $codes[] = (($c & 0x0F) << 12) | (($c1 & 0x3F) << 6) | ($c2 & 0x3F);
                 $chars[] = substr($string, $i - 2, 3);
-            } elseif (($c & 0xF8) == 0xF0){
+            } elseif (($c & 0xF8) == 0xF0) {
                 $c1 = $ord[$string[++$i]];
                 $c2 = $ord[$string[++$i]];
                 $c3 = $ord[$string[++$i]];
                 $codes[] = (($c & 0x07) << 18) | (($c1 & 0x3F) << 12) | (($c2 & 0x3F) << 6) | ($c3 & 0x3F);
                 $chars[] = substr($string, $i - 3, 4);
             } else {
-                throw new Exception('Invalid UTF-8 string');
+                throw new RuntimeException('Invalid UTF-8 string');
             }
         }
 
@@ -770,13 +767,12 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
-     * @param $character_mask
+     * @param string|UnicodeString $character_mask
      * @param bool $left
      * @param bool $right
      * @return UnicodeString
-     * @throws Exception
      */
-    protected function doTrim($character_mask, $left = true, $right = true)
+    protected function doTrim($character_mask, bool $left = true, bool $right = true): self
     {
         $character_mask = static::from($character_mask);
 
@@ -785,7 +781,7 @@ class UnicodeString implements ArrayAccess
         $start = 0;
         $end = $this->length;
 
-        if($left){
+        if ($left) {
             for ($i = 0; $i < $this->length; $i++) {
                 if (!in_array($cp[$i], $cm)) {
                     break;
@@ -794,7 +790,7 @@ class UnicodeString implements ArrayAccess
             $start = $i;
         }
 
-        if($right){
+        if ($right) {
             for ($i = $this->length - 1; $i > $start; $i--) {
                 if (!in_array($cp[$i], $cm)) {
                     break;
@@ -810,24 +806,23 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
-     * @param $length
-     * @param $pad
+     * @param int $length
+     * @param string|UnicodeString $pad
      * @param bool $left
      * @return UnicodeString
-     * @throws Exception
      */
-    protected function doPad($length, $pad, $left = true)
+    protected function doPad(int $length, $pad, bool $left = true): self
     {
-        if($length <= 0){
-            return new static(array(), array());
+        if ($length <= 0) {
+            return new static([], []);
         }
 
-        if($length === $this->length){
+        if ($length === $this->length) {
             return clone $this;
         }
 
-        if($length < $this->length){
-            if($left){
+        if ($length < $this->length) {
+            if ($left) {
                 return $this->substring($this->length - $length);
             } else {
                 return $this->substring(0, $length);
@@ -836,7 +831,7 @@ class UnicodeString implements ArrayAccess
 
         $pad = static::from($pad);
 
-        if($pad->isEmpty()){
+        if ($pad->isEmpty()) {
             $pad = static::from(' ');
         }
 
@@ -844,20 +839,20 @@ class UnicodeString implements ArrayAccess
         $mod = $noch % $pad->length;
         $times = ($noch - $mod) / $pad->length;
 
-        $padchars = array();
-        $padcodes = array();
+        $padchars = [];
+        $padcodes = [];
 
-        for($i = 0; $i < $times; $i++){
+        for ($i = 0; $i < $times; $i++) {
             $padcodes = array_merge($padcodes, $pad->codes);
             $padchars = array_merge($padchars, $pad->chars);
         }
 
-        if($mod != 0){
+        if ($mod != 0) {
             $padcodes = array_merge($padcodes, array_slice($pad->codes, 0, $mod));
             $padchars = array_merge($padchars, array_slice($pad->chars, 0, $mod));
         }
 
-        if($left){
+        if ($left) {
             $cp = array_merge($padcodes, $this->codes);
             $ch = array_merge($padchars, $this->chars);
         } else {
@@ -873,15 +868,15 @@ class UnicodeString implements ArrayAccess
      * @param int $cacheKey
      * @return UnicodeString
      */
-    protected function toCase(array $map, $cacheKey)
+    protected function toCase(array $map, int $cacheKey): self
     {
         $cp = $this->codes;
         $ch = $this->chars;
-        $ocp = $och = array();
+        $ocp = $och = [];
 
-        for($i = 0, $l = $this->length; $i < $l; $i++){
+        for ($i = 0, $l = $this->length; $i < $l; $i++) {
             $p = $cp[$i];
-            if(isset($map[$p])){
+            if (isset($map[$p])) {
                 $v = $map[$p];
                 $ocp[] = $v[0];
                 $och[] = $v[1];
@@ -901,10 +896,10 @@ class UnicodeString implements ArrayAccess
      * @param array $map
      * @return bool
      */
-    protected function isCase(array $map)
+    protected function isCase(array $map): bool
     {
-        foreach ($this->codes as $cp){
-            if(isset($map[$cp])){
+        foreach ($this->codes as $cp) {
+            if (isset($map[$cp])) {
                 return false;
             }
         }
@@ -914,11 +909,11 @@ class UnicodeString implements ArrayAccess
     /**
      * @return array
      */
-    protected function getUpperMap()
+    protected function getUpperMap(): array
     {
         static $upper;
 
-        if($upper === null){
+        if ($upper === null) {
             $upper = require __DIR__ . '/../res/upper.php';
         }
 
@@ -928,11 +923,11 @@ class UnicodeString implements ArrayAccess
     /**
      * @return array
      */
-    protected function getLowerMap()
+    protected function getLowerMap(): array
     {
         static $lower;
 
-        if($lower === null){
+        if ($lower === null) {
             $lower = require __DIR__ . '/../res/lower.php';
         }
 
@@ -940,24 +935,27 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
-     * @return mixed
+     * @return array
      */
-    protected function getAsciiMap()
+    protected function getAsciiMap(): array
     {
         static $ascii;
 
-        if($ascii === null){
+        if ($ascii === null) {
             $ascii = require __DIR__ . '/../res/ascii.php';
         }
 
         return $ascii;
     }
 
-    protected function getCharMap()
+    /**
+     * @return array
+     */
+    protected function getCharMap(): array
     {
         static $char;
 
-        if($char === null){
+        if ($char === null) {
             $char = require __DIR__ . '/../res/char.php';
         }
 

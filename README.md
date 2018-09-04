@@ -8,30 +8,41 @@ Opis String
 Manipulate multibyte strings
 ----------------------------
 
-This tiny library allows you to manipulate multibyte encoded strings,
-using an object-oriented paradigm. The library has **no dependencies** to
-*mbstring* or similar PHP extensions and is compatible with PHP 5.3+, PHP 7.0 and HHVM.
+Opis String is a tiny library that allows you to work with multibyte encoded strings in an object-oriented manner. 
+The library has no dependencies to *mb_string* or similar PHP extensions.
 
 ### Documentation
 
-Documentation and examples can be found [here](https://www.opis.io/string).
+The full documentation for this library can be found [here][documentation].
 
 ### License
 
-**Opis String** is licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+**Opis String** is licensed under the [Apache License, Version 2.0][apache_license].
 
 ### Requirements
 
-* PHP 5.3.* or higher
+* PHP ^7.0
 
-### Installation
+## Installation
 
-This library is available on [Packagist](https://packagist.org/packages/opis/string) and can be installed using [Composer](http://getcomposer.org).
+**Opis String** is available on [Packagist] and it can be installed from a 
+command line interface by using [Composer]. 
+
+```bash
+composer require opis/string
+```
+
+Or you could directly reference it into your `composer.json` file as a dependency
 
 ```json
 {
     "require": {
-        "opis/string": "^1.4.0"
+        "opis/string": "^1.5"
     }
 }
 ```
+
+[documentation]: https://opis.io/string
+[apache_license]: https://www.apache.org/licenses/LICENSE-2.0 "Apache License"
+[Packagist]: https://packagist.org/packages/opis/string "Packagist"
+[Composer]: https://getcomposer.org "Composer"

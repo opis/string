@@ -17,9 +17,10 @@
 
 namespace Opis\String\Test;
 
+use PHPUnit\Framework\TestCase;
 use Opis\String\UnicodeString as wstring;
 
-class UnicodeStringTest extends \PHPUnit_Framework_TestCase
+class UnicodeStringTest extends TestCase
 {
     public function testLength()
     {
