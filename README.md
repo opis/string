@@ -8,7 +8,7 @@ Opis String
 Manipulate multibyte strings
 ----------------------------
 
-Opis String is a tiny library that allows you to work with multibyte encoded strings in an object-oriented manner. 
+Opis String is a tiny library that allows you to work with multibyte encoded strings in an object-oriented manner.
 The library has no dependencies to *mb_string* or similar PHP extensions.
 
 ### Documentation
@@ -25,8 +25,8 @@ The full documentation for this library can be found [here][documentation].
 
 ## Installation
 
-**Opis String** is available on [Packagist] and it can be installed from a 
-command line interface by using [Composer]. 
+**Opis String** is available on [Packagist] and it can be installed from a
+command line interface by using [Composer].
 
 ```bash
 composer require opis/string
@@ -37,7 +37,7 @@ Or you could directly reference it into your `composer.json` file as a dependenc
 ```json
 {
     "require": {
-        "opis/string": "^1.5"
+        "opis/string": "^2.0"
     }
 }
 ```

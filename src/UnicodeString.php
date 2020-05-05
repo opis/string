@@ -1,6 +1,6 @@
 <?php
 /* ===========================================================================
- * Copyright 2018 Zindex Software
+ * Copyright 2018-2020 Zindex Software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,90 +17,60 @@
 
 namespace Opis\String;
 
-use ArrayAccess;
 use RuntimeException;
+use OutOfBoundsException;
+use Countable, ArrayAccess;
+use Serializable, JsonSerializable;
+use Opis\String\Exception\{
+    UnicodeException,
+    InvalidCharException,
+    InvalidStringException,
+    InvalidCodePointException
+};
 
-class UnicodeString implements ArrayAccess
-{
-    const CACHE_IS_LOWER = 0;
+class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSerializable {
+    const KEEP_CASE = 0;
 
-    const CACHE_IS_UPPER = 1;
+    const LOWER_CASE = 1;
 
-    const CACHE_TO_LOWER = 2;
+    const UPPER_CASE = 2;
 
-    const CACHE_TO_UPPER = 3;
+    const FOLD_CASE = 3;
 
-    const CACHE_IS_ASCII = 4;
+    const ASCII_CONV = 4;
 
-    const CACHE_TO_ASCII = 5;
-
-    /** @var array */
+    /**
+     * @var int[]
+     */
     protected $codes;
 
-    /** @var array */
+    /**
+     * @var string[]|null
+     */
     protected $chars;
 
-    /** @var string|null */
-    protected $string;
-
-    /** @var int */
-    protected $length;
-
-    /** @var array */
-    protected $cache = [];
+    /**
+     * @var int
+     */
+    protected $length = 0;
 
     /**
-     * @param array $codes
-     * @param array $chars
+     * @var string|null
      */
-    public function __construct(array $codes, array $chars)
+    protected $str = null;
+
+    /**
+     * @var null|array
+     */
+    protected $cache = null;
+
+    /**
+     * @param int[] $codes
+     */
+    protected function __construct(array $codes = [])
     {
         $this->codes = $codes;
-        $this->chars = $chars;
         $this->length = count($codes);
-    }
-
-    /**
-     * @param mixed $offset
-     * @return bool
-     */
-    public function offsetExists($offset)
-    {
-        return isset($this->codes[$offset]);
-    }
-
-    /**
-     * @param mixed $offset
-     * @return string
-     */
-    public function offsetGet($offset)
-    {
-        return $this->chars[$offset];
-    }
-
-    /**
-     * @param mixed $offset
-     * @param mixed $value
-     */
-    public function offsetSet($offset, $value)
-    {
-        throw new RuntimeException("Invalid operation");
-    }
-
-    /**
-     * @param mixed $offset
-     */
-    public function offsetUnset($offset)
-    {
-        throw new RuntimeException("Invalid operation");
-    }
-
-    /**
-     * @return string[]
-     */
-    public function chars(): array
-    {
-        return $this->chars;
     }
 
     /**
@@ -109,6 +79,17 @@ class UnicodeString implements ArrayAccess
     public function codePoints(): array
     {
         return $this->codes;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function chars(): array
+    {
+        if ($this->chars === null) {
+            $this->chars = self::getCharsFromCodePoints($this->codes);
+        }
+        return $this->chars;
     }
 
     /**
@@ -128,115 +109,167 @@ class UnicodeString implements ArrayAccess
     }
 
     /**
-     * @param string|UnicodeString $text
+     * @param string|self|int[]|string[] $text
      * @param bool $ignoreCase
      * @return bool
      */
     public function equals($text, bool $ignoreCase = false): bool
     {
-        $text = static::from($text);
-
-        if ($ignoreCase) {
-            return $this->toLower()->equals($text->toLower());
-        }
-
-        return $this->codes === $text->codes;
+        return $this->compareTo($text, $ignoreCase) === 0;
     }
 
     /**
-     * @param string|UnicodeString $text
+     * @param string|self|int[]|string[] $text
      * @param bool $ignoreCase
      * @return int
      */
     public function compareTo($text, bool $ignoreCase = false): int
     {
-        $text = static::from($text);
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
 
-        if ($this->length !== $text->length) {
-            return $this->length > $text->length ? 1 : -1;
+        $text = self::resolveCodePoints($text, $mode);
+
+        $length = count($text);
+
+        if ($length !== $this->length) {
+            return $this->length <=> $length;
         }
 
-        if ($ignoreCase) {
-            return $this->toLower()->compareTo($text->toLower());
-        }
-
-        for ($i = 0, $l = $this->length; $i < $l; $i++) {
-            if ($this->codes[$i] !== $text->codes[$i]) {
-                return $this->codes[$i] > $text->codes[$i] ? 1 : -1;
-            }
-        }
-
-        return 0;
+        return $this->getMappedCodes($mode) <=> $text;
     }
 
     /**
-     * @param string|UnicodeString $text
+     * @param string|self|int[]|string[] $text
      * @param bool $ignoreCase
      * @return bool
      */
     public function contains($text, bool $ignoreCase = false): bool
     {
-        return $this->indexOf($text, 0, $ignoreCase) !== false;
+        return $this->indexOf($text, 0, $ignoreCase) !== -1;
     }
 
     /**
-     * @param string|UnicodeString $text
+     * @param string|self|int[]|string[] $text
      * @param bool $ignoreCase
      * @return bool
      */
     public function startsWith($text, bool $ignoreCase = false): bool
     {
-        return $this->indexOf($text, 0, $ignoreCase) === 0;
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
+
+        $text = self::resolveCodePoints($text, $mode);
+
+        $len = count($text);
+
+        if ($len === 0 || $len > $this->length) {
+            return false;
+        }
+
+        return array_slice($this->getMappedCodes($mode), 0, $len) === $text;
     }
 
     /**
-     * @param string|UnicodeString $text
+     * @param string|self|int[]|string[] $text
      * @param bool $ignoreCase
      * @return bool
      */
     public function endsWith($text, bool $ignoreCase = false): bool
     {
-        $text = static::from($text);
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
 
-        $offset = $this->length - $text->length;
+        $text = self::resolveCodePoints($text, $mode);
+
+        if (empty($text)) {
+            return false;
+        }
+
+        $codes = $this->getMappedCodes($mode);
+
+        $offset = $this->length - count($text);
 
         if ($offset < 0) {
             return false;
         }
 
-        return $this->indexOf($text, $offset, $ignoreCase) === $offset;
+        return array_slice($codes, $offset) === $text;
     }
 
     /**
-     * @param string|UnicodeString $text
+     * @param string|self|int[]|string[] $text
      * @param int $offset
      * @param bool $ignoreCase
-     * @return int|false
+     * @return int
      */
-    public function indexOf($text, int $offset = 0, bool $ignoreCase = false)
+    public function indexOf($text, int $offset = 0, bool $ignoreCase = false): int
     {
-        $text = static::from($text);
-
-        if ($this->length < $text->length) {
-            return false;
+        if ($offset < 0) {
+            $offset += $this->length;
+        }
+        if ($offset < 0 || $offset >= $this->length) {
+            return -1;
         }
 
-        if ($ignoreCase) {
-            return $this->toLower()->indexOf($text->toLower(), $offset);
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
+
+        $text = self::resolveCodePoints($text, $mode);
+
+        $len = count($text);
+
+        if ($len === 0 || $offset + $len > $this->length) {
+            return -1;
+        }
+
+        return $this->doIndexOf($this->getMappedCodes($mode), $text, $offset);
+    }
+
+    /**
+     * @param string|self|int[]|string[] $text
+     * @param int $offset
+     * @param bool $ignoreCase
+     * @return int
+     */
+    public function lastIndexOf($text, int $offset = 0, bool $ignoreCase = false): int
+    {
+        if ($offset < 0) {
+            $start = $this->length + $offset;
+            if ($start < 0) {
+                return -1;
+            }
+            $last = 0;
+        } else {
+            if ($offset >= $this->length) {
+                return -1;
+            }
+            $start = $this->length - 1;
+            $last = $offset;
+        }
+
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
+
+        $text = self::resolveCodePoints($text, $mode);
+
+        $len = count($text);
+
+        if ($len === 0) {
+            return -1;
         }
 
         if ($offset < 0) {
-            $offset = 0;
+            if ($len > $this->length) {
+                return -1;
+            }
+            $start = min($start, $this->length - $len);
+        } elseif ($offset + $len > $this->length) {
+            return -1;
         }
 
-        $cp1 = $this->codes;
-        $cp2 = $text->codes;
+        $codes = $this->getMappedCodes($mode);
 
-        for ($i = $offset, $l = $this->length - $text->length; $i <= $l; $i++) {
+        for ($i = $start; $i >= $last; $i--) {
             $match = true;
 
-            for ($j = 0, $f = $text->length; $j < $f; $j++) {
-                if ($cp1[$i + $j] != $cp2[$j]) {
+            for ($j = 0; $j < $len; $j++) {
+                if ($codes[$i + $j] !== $text[$j]) {
                     $match = false;
                     break;
                 }
@@ -247,335 +280,431 @@ class UnicodeString implements ArrayAccess
             }
         }
 
-        return false;
+        return -1;
     }
 
     /**
-     * @param UnicodeString|string $text
+     * @param string|self|int[]|string[] $text
      * @param bool $ignoreCase
-     * @return false|int
+     * @param bool $allowPrefixOnly If true the result can contain only the prefix
+     * @return $this
      */
-    public function lastIndexOf($text, bool $ignoreCase = false)
+    public function ensurePrefix($text, bool $ignoreCase = false, bool $allowPrefixOnly = true): self
     {
-        $text = static::from($text);
+        $text = self::resolveCodePoints($text);
 
-        if ($this->length < $text->length) {
-            return false;
+        $len = count($text);
+
+        if ($len === 0) {
+            return clone $this;
+        }
+
+        if ($this->length === 0) {
+            return new static($text);
         }
 
         if ($ignoreCase) {
-            return $this->toLower()->lastIndexOf($text->toLower());
+            $prefix = self::getMappedCodePoints($text, self::FOLD_CASE);
+        } else {
+            $prefix = &$text;
         }
 
-        $index = false;
-        $offset = 0;
+        if ($this->length === $len) {
+            $part = $this->getMappedCodes($ignoreCase ? self::FOLD_CASE : self::KEEP_CASE);
+            if ($allowPrefixOnly && $part === $prefix) {
+                return clone $this;
+            }
+            // Remove last element to avoid double check
+            array_pop($part);
+        } elseif ($this->length < $len) {
+            $part = $this->getMappedCodes($ignoreCase ? self::FOLD_CASE : self::KEEP_CASE);
+            // Checks if this can be a suffix
+            if ($allowPrefixOnly && (array_slice($prefix, 0, $this->length) === $part)) {
+                $text = array_slice($text, $this->length);
+                return new static(array_merge($this->codes, $text));
+            }
+        } else {
+            $part = array_slice($this->codes, 0, $len);
+            if ($ignoreCase) {
+                $part = self::getMappedCodePoints($part, self::FOLD_CASE);
+            }
+            if ($part === $prefix) {
+                return clone $this;
+            }
+            // Remove last element to avoid double check
+            array_pop($part);
+        }
 
-        while (true) {
-            if (false === $offset = $this->indexOf($text, $offset)) {
+        $copy = $len;
+
+        $part_len = count($part);
+
+        while ($part_len) {
+            if ($part === array_slice($prefix, -$part_len)) {
+                $copy = $len - $part_len;
                 break;
             }
-            $index = $offset;
-            $offset += $text->length;
+            array_pop($part);
+            $part_len--;
         }
 
-        return $index;
+        if ($copy === 0) {
+            return clone $this;
+        }
+
+        if ($copy < $len) {
+            $text = array_slice($text, 0, $copy);
+        }
+
+        return new static(array_merge($text, $this->codes));
     }
 
     /**
-     * @param string|UnicodeString $text
+     * @param string|self|int[]|string[] $text
      * @param bool $ignoreCase
-     * @return UnicodeString
+     * @param bool $allowSuffixOnly If true the result can contain only the suffix
+     * @return static
      */
-    public function ensurePrefix($text, bool $ignoreCase = false): self
+    public function ensureSuffix($text, bool $ignoreCase = false, bool $allowSuffixOnly = true): self
     {
-        $text = static::from($text);
+        $text = self::resolveCodePoints($text);
 
-        if (!$this->startsWith($text, $ignoreCase)) {
-            $cp = array_merge($text->codes, $this->codes);
-            $ch = array_merge($text->chars, $this->chars);
+        $len = count($text);
 
-            return new static($cp, $ch);
+        if ($len === 0) {
+            return clone $this;
         }
 
-        return clone $this;
-    }
-
-    /**
-     * @param string|UnicodeString $text
-     * @param bool $ignoreCase
-     * @return UnicodeString
-     */
-    public function ensureSuffix($text, bool $ignoreCase = false): self
-    {
-        $text = static::from($text);
-
-        if (!$this->endsWith($text, $ignoreCase)) {
-            $cp = array_merge($this->codes, $text->codes);
-            $ch = array_merge($this->chars, $text->chars);
-
-            return new static($cp, $ch);
+        if ($this->length === 0) {
+            return new static($text);
         }
 
-        return clone $this;
-    }
-
-    /**
-     * @param UnicodeString|string $text
-     * @return UnicodeString
-     */
-    public function append($text): self
-    {
-        $text = static::from($text);
-        $cp = array_merge($this->codes, $text->codes);
-        $ch = array_merge($this->chars, $text->chars);
-
-        return new static($cp, $ch);
-    }
-
-    /**
-     * @param UnicodeString|string $text
-     * @return UnicodeString
-     */
-    public function prepend($text): self
-    {
-        $text = static::from($text);
-        $cp = array_merge($text->codes, $this->codes);
-        $ch = array_merge($text->chars, $this->chars);
-
-        return new static($cp, $ch);
-    }
-
-    /**
-     * @param string|UnicodeString $text
-     * @param int $index
-     * @return UnicodeString
-     */
-    public function insert($text, int $index): self
-    {
-        if ($index <= 0) {
-            return $this->prepend($text);
+        if ($ignoreCase) {
+            $suffix = self::getMappedCodePoints($text, self::FOLD_CASE);
+        } else {
+            $suffix = &$text;
         }
 
-        if ($index >= $this->length) {
-            return $this->append($text);
+        if ($this->length === $len) {
+            $part = $this->getMappedCodes($ignoreCase ? self::FOLD_CASE : self::KEEP_CASE);
+            if ($allowSuffixOnly && $part === $suffix) {
+                return clone $this;
+            }
+            // Remove first element to avoid double check
+            array_shift($part);
+        } elseif ($this->length < $len) {
+            $part = $this->getMappedCodes($ignoreCase ? self::FOLD_CASE : self::KEEP_CASE);
+            // Checks if this can be a prefix
+            if ($allowSuffixOnly && (array_slice($suffix, -$this->length) === $part)) {
+                $text = array_slice($text, 0, $len - $this->length);
+                return new static(array_merge($text, $this->codes));
+            }
+        } else {
+            $part = array_slice($this->codes, -$len);
+            if ($ignoreCase) {
+                $part = self::getMappedCodePoints($part, self::FOLD_CASE);
+            }
+            if ($part === $suffix) {
+                return clone $this;
+            }
+            // Remove first element to avoid double check
+            array_shift($part);
         }
 
-        $text = static::from($text);
+        $skip = 0;
 
-        $lcp = array_slice($this->codes, 0, $index);
-        $lch = array_slice($this->chars, 0, $index);
+        $part_len = count($part);
 
-        $rcp = array_slice($this->codes, $index);
-        $rch = array_slice($this->chars, $index);
+        while ($part_len) {
+            if ($part === array_slice($suffix, 0, $part_len)) {
+                $skip = $part_len;
+                break;
+            }
+            array_shift($part);
+            $part_len--;
+        }
 
-        $cp = array_merge($lcp, $text->codes, $rcp);
-        $ch = array_merge($lch, $text->chars, $rch);
+        if ($skip === $len) {
+            return clone $this;
+        }
 
-        return new static($cp, $ch);
+        if ($skip) {
+            array_splice($text, 0, $skip);
+        }
+
+        return new static(array_merge($this->codes, $text));
     }
 
     /**
-     * @param string|UnicodeString $character_mask
-     * @return UnicodeString
+     * @param string|self|int[]|string[] $text
+     * @param int $mode
+     * @return static
      */
-    public function trim($character_mask = " \t\n\r\0\x0B"): self
+    public function append($text, int $mode = self::KEEP_CASE): self
     {
-        return $this->doTrim($character_mask);
+        return new static(array_merge($this->codes, self::resolveCodePoints($text, $mode)));
     }
 
     /**
-     * @param string|UnicodeString $character_mask
-     * @return UnicodeString
+     * @param string|self|int[]|string[] $text
+     * @param int $mode
+     * @return static
      */
-    public function trimLeft($character_mask = " \t\n\r\0\x0B"): self
+    public function prepend($text, int $mode = self::KEEP_CASE): self
     {
-        return $this->doTrim($character_mask, true, false);
+        return new static(array_merge(self::resolveCodePoints($text, $mode), $this->codes));
     }
 
     /**
-     * @param string|UnicodeString $character_mask
-     * @return UnicodeString
-     */
-    public function trimRight($character_mask = " \t\n\r\0\x0B"): self
-    {
-        return $this->doTrim($character_mask, false, true);
-    }
-
-    /**
-     * @param string|UnicodeString $subject
-     * @param string|UnicodeString $replace
+     * @param string|self|int[]|string[] $text
      * @param int $offset
-     * @return UnicodeString
+     * @param int $mode
+     * @return static
      */
-    public function replace($subject, $replace, int $offset = 0): self
+    public function insert($text, int $offset, int $mode = self::KEEP_CASE): self
     {
-        $subject = static::from($subject);
-        $replace = static::from($replace);
+        $codes = $this->codes;
 
-        if (false === $pos = $this->indexOf($subject, $offset)) {
-            return clone $this;
-        }
+        array_splice($codes, $offset, 0, self::resolveCodePoints($text, $mode));
 
-        $cp1 = array_slice($this->codes, 0, $pos);
-        $cp2 = array_slice($this->codes, $pos + $subject->length);
-        $ch1 = array_slice($this->chars, 0, $pos);
-        $ch2 = array_slice($this->chars, $pos + $subject->length);
-
-        $cp = array_merge($cp1, $replace->codes, $cp2);
-        $ch = array_merge($ch1, $replace->chars, $ch2);
-
-        return new static($cp, $ch);
+        return new static($codes);
     }
 
     /**
-     * @param string|UnicodeString $subject
-     * @param string|UnicodeString $replace
-     * @return UnicodeString
+     * @param int $offset
+     * @param int|null $length
+     * @return static
      */
-    public function replaceAll($subject, $replace): self
+    public function remove(int $offset, int $length = null): self
     {
-        $subject = static::from($subject);
-        $replace = static::from($replace);
+        $codes = $this->codes;
 
-        if (false === $offset = $this->indexOf($subject) || $subject->isEmpty()) {
-            return clone $this;
+        if ($length === null) {
+            array_splice($codes, $offset);
+        } else {
+            array_splice($codes, $offset, $length);
         }
 
-        $text = $this;
-
-        do {
-            $text = $text->replace($subject, $replace, $offset);
-            $offset = $text->indexOf($subject, $offset + $replace->length);
-        } while ($offset !== false);
-
-        return $text;
+        return new static($codes);
     }
 
     /**
-     * @return UnicodeString
+     * @param string|self|int[]|string[] $mask
+     * @return static
+     */
+    public function trim($mask = " \t\n\r\0\x0B"): self
+    {
+        return $this->doTrim($mask, true, true);
+    }
+
+    /**
+     * @param string|self|int[]|string[] $mask
+     * @return static
+     */
+    public function trimLeft($mask = " \t\n\r\0\x0B"): self
+    {
+        return $this->doTrim($mask, true, false);
+    }
+
+    /**
+     * @param string|self|int[]|string[] $mask
+     * @return static
+     */
+    public function trimRight($mask = " \t\n\r\0\x0B"): self
+    {
+        return $this->doTrim($mask, false, true);
+    }
+
+    /**
+     * @return static
      */
     public function reverse(): self
     {
-        $cp = array_reverse($this->codes);
-        $ch = array_reverse($this->chars);
-
-        return new static($cp, $ch);
+        return new static(array_reverse($this->codes));
     }
-
 
     /**
      * @param int $times
-     * @return UnicodeString
+     * @return static
      */
     public function repeat(int $times = 1): self
     {
-        if ($times < 1) {
-            $times = 1;
+        if ($times <= 1) {
+            return clone $this;
         }
 
-        $cp = $this->codes;
-        $ch = $this->chars;
+        $codes = [];
 
-        for ($i = 0; $i < $times; $i++) {
-            $cp = array_merge($cp, $this->codes);
-            $ch = array_merge($ch, $this->chars);
+        while ($times--) {
+            $codes = array_merge($codes, $this->codes);
         }
 
-        return new static($cp, $ch);
+        return new static($codes);
     }
 
     /**
-     * @param int $index
-     * @param int $length
-     * @return UnicodeString
+     * @param string|self|int[]|string[] $subject
+     * @param string|self|int[]|string[] $replace
+     * @param int $offset
+     * @param bool $ignoreCase
+     * @return static
      */
-    public function remove(int $index, int $length): self
+    public function replace($subject, $replace, int $offset = 0, bool $ignoreCase = false): self
     {
-        if ($index < 0) {
-            $index = 0;
+        if ($offset < 0) {
+            $offset += $this->length;
+        }
+        if ($offset < 0 || $offset >= $this->length) {
+            return clone $this;
         }
 
-        if ($length < 0) {
-            $length = 0;
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
+
+        $subject = self::resolveCodePoints($subject, $mode);
+
+        $len = count($subject);
+
+        if ($len === 0 || $offset + $len > $this->length) {
+            return clone $this;
         }
 
-        $lcp = array_slice($this->codes, 0, $index);
-        $lch = array_slice($this->chars, 0, $index);
-        $rcp = array_slice($this->codes, $index + $length);
-        $rch = array_slice($this->chars, $index + $length);
+        $offset = $this->doIndexOf($this->getMappedCodes($mode), $subject, $offset);
 
-        $cp = array_merge($lcp, $rcp);
-        $ch = array_merge($lch, $rch);
+        if ($offset === -1) {
+            return clone $this;
+        }
 
-        return new static($cp, $ch);
+        $codes = $this->codes;
+
+        array_splice($codes, $offset, count($subject), self::resolveCodePoints($replace));
+
+        return new static($codes);
     }
 
     /**
-     * @param string|UnicodeString $char
-     * @return UnicodeString[]
+     * @param string|self|int[]|string[] $subject
+     * @param string|self|int[]|string[] $replace
+     * @param bool $ignoreCase
+     * @param int $offset
+     * @return static
      */
-    public function split($char = ''): array
+    public function replaceAll($subject, $replace, bool $ignoreCase = false, int $offset = 0): self
     {
-        $char = static::from($char);
-        $results = [];
+        if ($offset < 0) {
+            $offset += $this->length;
+        }
+        if ($offset < 0 || $offset >= $this->length) {
+            return clone $this;
+        }
 
-        if ($char->isEmpty()) {
-            for ($i = 0, $l = $this->length; $i < $l; $i++) {
-                $results[] = new static([$this->codes[$i]], [$this->chars[$i]]);
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
+
+        $subject = self::resolveCodePoints($subject, $mode);
+
+        $len = count($subject);
+
+        if ($len === 0 || $offset + $len > $this->length) {
+            return clone $this;
+        }
+
+        $replace = self::resolveCodePoints($replace);
+
+        $codes = $this->getMappedCodes($mode);
+
+        $copy = $this->codes;
+
+        $fix = count($replace) - $len;
+
+        $t = 0;
+
+        while (($pos = $this->doIndexOf($codes, $subject, $offset)) >= 0) {
+            array_splice($copy, $pos + $t * $fix, $len, $replace);
+            $offset = $pos + $len;
+            $t++;
+        }
+
+        return new static($copy);
+    }
+
+    /**
+     * @param string|self|int[]|string[] $delimiter
+     * @param bool $ignoreCase
+     * @return array
+     */
+    public function split($delimiter = '', bool $ignoreCase = false): array
+    {
+        $mode = $ignoreCase ? self::FOLD_CASE : self::KEEP_CASE;
+        $delimiter = self::resolveCodePoints($delimiter, $mode);
+        $len = count($delimiter);
+
+        $ret = [];
+
+        if ($len === 0) {
+            foreach ($this->codes as $code) {
+                $ret[] = new static([$code]);
             }
-            return $results;
+        } else {
+            $codes = $this->getMappedCodes($mode);
+
+            $offset = 0;
+
+            while (($pos = $this->doIndexOf($codes, $delimiter, $offset)) >= 0) {
+                $ret[] = new static(array_slice($this->codes, $offset, $pos - $offset));
+                $offset = $pos + $len;
+            }
+
+            $ret[] = new static(array_slice($this->codes, $offset));
         }
 
-        if (false === $offset = $this->indexOf($char)) {
-            return [clone $this];
-        }
-
-        $start = 0;
-        do {
-            $cp = array_slice($this->codes, $start, $offset - $start);
-            $ch = array_slice($this->chars, $start, $offset - $start);
-            $results[] = new static($cp, $ch);
-            $start = $offset + $char->length;
-            $offset = $this->indexOf($char, $start);
-        } while ($offset !== false);
-
-        $cp = array_slice($this->codes, $start);
-        $ch = array_slice($this->chars, $start);
-        $results[] = new static($cp, $ch);
-        return $results;
+        return $ret;
     }
 
     /**
      * @param int $start
      * @param int|null $length
-     * @return UnicodeString
+     * @return static
      */
     public function substring(int $start, int $length = null): self
     {
-        $cp = array_slice($this->codes, $start, $length);
-        $ch = array_slice($this->chars, $start, $length);
-
-        return new static($cp, $ch);
+        return new static(array_slice($this->codes, $start, $length));
     }
 
     /**
-     * @param int $length
-     * @param string|UnicodeString $char
-     * @return UnicodeString
+     * @param int $size If negative then pad left otherwise pad right
+     * @param self|string|int $char A char or a code point
+     * @return static
      */
-    public function padLeft(int $length, $char = ' '): self
+    public function pad(int $size, $char = 0x20): self
     {
-        return $this->doPad($length, $char, true);
+        return new static(array_pad($this->codes, $size, self::resolveFirstCodePoint($char, 0x20)));
     }
 
     /**
-     * @param int $length
-     * @param string|UnicodeString $char
-     * @return UnicodeString
+     * @param int $size
+     * @param self|string|int $char
+     * @return static
      */
-    public function padRight($length, $char = ' '): self
+    public function padLeft(int $size, $char = 0x20): self
     {
-        return $this->doPad($length, $char, false);
+        if ($size > 0) {
+            $size = -$size;
+        }
+
+        return $this->pad($size, $char);
+    }
+
+    /**
+     * @param int $size
+     * @param self|string|int $char
+     * @return static
+     */
+    public function padRight(int $size, $char = 0x20): self
+    {
+        if ($size < 0) {
+            $size = -$size;
+        }
+
+        return $this->pad($size, $char);
     }
 
     /**
@@ -583,11 +712,7 @@ class UnicodeString implements ArrayAccess
      */
     public function isLowerCase(): bool
     {
-        if (!isset($this->cache[static::CACHE_IS_LOWER])) {
-            $this->cache[static::CACHE_IS_LOWER] = $this->isCase($this->getLowerMap());
-        }
-
-        return $this->cache[static::CACHE_IS_LOWER];
+        return $this->isCase(self::LOWER_CASE);
     }
 
     /**
@@ -595,11 +720,7 @@ class UnicodeString implements ArrayAccess
      */
     public function isUpperCase(): bool
     {
-        if (!isset($this->cache[static::CACHE_IS_UPPER])) {
-            $this->cache[static::CACHE_IS_UPPER] = $this->isCase($this->getUpperMap());
-        }
-
-        return $this->cache[static::CACHE_IS_UPPER];
+        return $this->isCase(self::UPPER_CASE);
     }
 
     /**
@@ -607,359 +728,984 @@ class UnicodeString implements ArrayAccess
      */
     public function isAscii(): bool
     {
-        if (!isset($this->cache[static::CACHE_IS_ASCII])) {
+        $key = 'i' . self::ASCII_CONV;
+
+        if (!isset($this->cache[$key])) {
+            $ok = true;
+
             foreach ($this->codes as $code) {
                 if ($code >= 0x80) {
-                    return $this->cache[static::CACHE_IS_ASCII] = false;
+                    $ok = false;
+                    break;
                 }
             }
-            return $this->cache[static::CACHE_IS_ASCII] = true;
+
+            $this->cache[$key] = $ok;
         }
 
-        return $this->cache[static::CACHE_IS_ASCII];
+        return $this->cache[$key];
     }
 
     /**
-     * @return UnicodeString
-     */
-    public function toAscii(): self
-    {
-
-        if (!isset($this->cache[static::CACHE_TO_ASCII])) {
-            if (isset($this->cache[static::CACHE_IS_ASCII]) && $this->cache[static::CACHE_IS_ASCII]) {
-                $this->cache[static::CACHE_TO_ASCII] = clone $this;
-            } else {
-                $ascii = $this->getAsciiMap();
-                $char = $this->getCharMap();
-                $ch = [];
-                $cp = [];
-
-                foreach ($this->codes as $code) {
-                    if (isset($ascii[$code])) {
-                        $cp[] = $c = $ascii[$code];
-                        $ch[] = $char[$c];
-                    }
-                }
-
-                $instance = new static($cp, $ch);
-                $instance->cache[static::CACHE_IS_ASCII] = true;
-
-                $keys = [static::CACHE_IS_UPPER, static::CACHE_IS_LOWER];
-
-                foreach ($keys as $key) {
-                    if (isset($this->cache[$key])) {
-                        $instance->cache[$key] = $this->cache[$key];
-                    }
-                }
-
-                $this->cache[static::CACHE_TO_ASCII] = $instance;
-            }
-        }
-
-        return $this->cache[static::CACHE_TO_ASCII];
-    }
-
-    /**
-     * @return UnicodeString
+     * Convert all chars to lower case (where possible)
+     * @return static
      */
     public function toLower(): self
     {
-        if (!isset($this->cache[static::CACHE_TO_LOWER])) {
-            if (isset($this->cache[static::CACHE_IS_LOWER]) && $this->cache[static::CACHE_IS_LOWER]) {
-                $this->cache[static::CACHE_TO_LOWER] = clone $this;
-            } else {
-                $this->cache[static::CACHE_TO_LOWER] = $this->toCase($this->getLowerMap(), static::CACHE_IS_LOWER);
-            }
+        if ($this->cache['i' . self::LOWER_CASE] ?? false) {
+            return clone $this;
         }
-
-        return $this->cache[static::CACHE_TO_LOWER];
+        return new static($this->getMappedCodes(self::LOWER_CASE));
     }
 
     /**
-     * @return UnicodeString
+     * Convert all chars to upper case (where possible)
+     * @return static
      */
     public function toUpper(): self
     {
-        if (!isset($this->cache[static::CACHE_TO_UPPER])) {
-            if (isset($this->cache[static::CACHE_IS_UPPER]) && $this->cache[static::CACHE_IS_UPPER]) {
-                $this->cache[static::CACHE_TO_UPPER] = clone $this;
-            } else {
-                $this->cache[static::CACHE_TO_UPPER] = $this->toCase($this->getUpperMap(), static::CACHE_IS_UPPER);
-            }
+        if ($this->cache['i' . self::UPPER_CASE] ?? false) {
+            return clone $this;
+        }
+        return new static($this->getMappedCodes(self::UPPER_CASE));
+    }
+
+    /**
+     * Converts all chars to their ASCII equivalent (if any)
+     * @return static
+     */
+    public function toAscii(): self
+    {
+        if ($this->cache['i' . self::ASCII_CONV] ?? false) {
+            return clone $this;
+        }
+        return new static($this->getMappedCodes(self::ASCII_CONV));
+    }
+
+    /**
+     * @param int $index
+     * @return string
+     */
+    public function charAt(int $index): string
+    {
+        // Allow negative index
+        if ($index < 0 && $index + $this->length >= 0) {
+            $index += $this->length;
         }
 
-        return $this->cache[static::CACHE_TO_UPPER];
+        if ($index < 0 || $index >= $this->length) {
+            return '';
+        }
+
+        return $this->chars()[$index];
+    }
+
+    /**
+     * @param int $index
+     * @return int
+     */
+    public function codePointAt(int $index): int
+    {
+        // Allow negative index
+        if ($index < 0 && $index + $this->length >= 0) {
+            $index += $this->length;
+        }
+
+        if ($index < 0 || $index >= $this->length) {
+            return -1;
+        }
+
+        return $this->codes[$index];
     }
 
     /**
      * @param int $offset
      * @return int
      */
-    public function __invoke($offset)
+    public function __invoke(int $offset): int
     {
+        if ($offset < 0) {
+            if ($offset + $this->length < 0) {
+                throw new OutOfBoundsException("Undefined offset: {$offset}");
+            }
+            $offset += $this->length;
+        } elseif ($offset >= $this->length) {
+            throw new OutOfBoundsException("Undefined offset: {$offset}");
+        }
+
         return $this->codes[$offset];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetExists($offset)
+    {
+        // Allow negative index
+        if ($offset < 0) {
+            $offset += $this->length;
+        }
+
+        return isset($this->codes[$offset]);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetGet($offset)
+    {
+        if ($offset < 0) {
+            if ($offset + $this->length < 0) {
+                throw new OutOfBoundsException("Undefined offset: {$offset}");
+            }
+            $offset += $this->length;
+        } elseif ($offset >= $this->length) {
+            throw new OutOfBoundsException("Undefined offset: {$offset}");
+        }
+
+        return $this->chars()[$offset];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetSet($offset, $value)
+    {
+        // Allow negative index
+        if ($offset < 0) {
+            $offset += $this->length;
+        }
+
+        if (!isset($this->codes[$offset])) {
+            return;
+        }
+
+
+        $value = self::resolveFirstCodePoint($value);
+        if ($value === -1) {
+            return;
+        }
+
+        if ($value === $this->codes[$offset]) {
+            // Same value, nothing to do
+            return;
+        }
+
+        $this->codes[$offset] = $value;
+
+        // Clear cache
+        $this->str = null;
+        $this->cache = null;
+        if ($this->chars) {
+            $this->chars[$offset] = self::getCharFromCodePoint($value);
+        }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function offsetUnset($offset)
+    {
+        throw new RuntimeException("Invalid operation");
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function count()
+    {
+        return $this->length;
     }
 
     /**
      * @return string
      */
-    public function __toString()
+    public function __toString(): string
     {
-        if ($this->string === null) {
-            $this->string = implode('', $this->chars);
+        if ($this->str === null) {
+            $this->str = implode('', $this->chars());
         }
 
-        return $this->string;
+        return $this->str;
     }
 
     /**
-     * @param $string
-     * @param string $encoding
-     * @return UnicodeString
+     * @inheritDoc
      */
-    public static function from($string, $encoding = 'UTF-8')
+    public function jsonSerialize()
     {
-        static $ord;
-
-        if ($string instanceof self) {
-            return $string;
-        }
-
-        if ($encoding !== 'UTF-8') {
-            if (false === $string = @iconv($encoding, 'UTF-8', $string)) {
-                throw new RuntimeException("Could not convert string from '$encoding' encoding to UTF-8 encoding");
-            }
-        }
-
-        if ($ord === null) {
-            $ord = require __DIR__ . '/../res/ord.php';
-        }
-
-        $codes = $chars = [];
-
-        for ($i = 0, $l = strlen($string); $i < $l; $i++) {
-            $c = $ord[$ch = $string[$i]];
-
-            if (($c & 0x80) == 0) {
-                $codes[] = $c;
-                $chars[] = $ch;
-            } elseif (($c & 0xE0) == 0xC0) {
-                $c1 = $ord[$string[++$i]];
-                $codes[] = (($c & 0x1F) << 6) | ($c1 & 0x3F);
-                $chars[] = substr($string, $i - 1, 2);
-            } elseif (($c & 0xF0) == 0xE0) {
-                $c1 = $ord[$string[++$i]];
-                $c2 = $ord[$string[++$i]];
-                $codes[] = (($c & 0x0F) << 12) | (($c1 & 0x3F) << 6) | ($c2 & 0x3F);
-                $chars[] = substr($string, $i - 2, 3);
-            } elseif (($c & 0xF8) == 0xF0) {
-                $c1 = $ord[$string[++$i]];
-                $c2 = $ord[$string[++$i]];
-                $c3 = $ord[$string[++$i]];
-                $codes[] = (($c & 0x07) << 18) | (($c1 & 0x3F) << 12) | (($c2 & 0x3F) << 6) | ($c3 & 0x3F);
-                $chars[] = substr($string, $i - 3, 4);
-            } else {
-                throw new RuntimeException('Invalid UTF-8 string');
-            }
-        }
-
-        return new static($codes, $chars);
+        return $this->__toString();
     }
 
     /**
-     * @param string|UnicodeString $character_mask
+     * @inheritDoc
+     */
+    public function serialize()
+    {
+        return $this->__toString();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function unserialize($serialized)
+    {
+        if (is_string($serialized)) {
+            $this->str = $serialized;
+            $this->codes = self::getCodePointsFromString($serialized);
+            $this->length = count($this->codes);
+        } else {
+            $this->codes = [];
+        }
+    }
+
+    /**
+     * @param int $mode
+     * @return int[]
+     */
+    protected function getMappedCodes(int $mode): array
+    {
+        if ($mode === self::KEEP_CASE || ($this->cache['i' . $mode] ?? false)) {
+            return $this->codes;
+        }
+
+        $key = 'm' . $mode;
+
+        if (!isset($this->cache[$key])) {
+            $this->cache[$key] = self::getMappedCodePoints($this->codes, $mode);
+        }
+
+        return $this->cache[$key];
+    }
+
+    /**
+     * @param int $mode
+     * @return bool
+     */
+    protected function isCase(int $mode): bool
+    {
+        $key = 'i' . $mode;
+
+        if (!isset($this->cache[$key])) {
+            $list = self::getMapByMode($mode);
+            foreach ($this->codes as $code) {
+                if (isset($list[$code])) {
+                    return $this->cache[$key] = false;
+                }
+            }
+
+            return $this->cache[$key] = true;
+        }
+
+        return $this->cache[$key];
+    }
+
+    /**
+     * @param int[] $codes
+     * @param int[] $text
+     * @param int $offset
+     * @return int
+     */
+    protected function doIndexOf(array $codes, array $text, int $offset = 0): int
+    {
+        $len = count($text);
+
+        for ($i = $offset, $last = count($codes) - $len; $i <= $last; $i++) {
+            $match = true;
+
+            for ($j = 0; $j < $len; $j++) {
+                if ($codes[$i + $j] !== $text[$j]) {
+                    $match = false;
+                    break;
+                }
+            }
+
+            if ($match) {
+                return $i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * @param string|self|int[]|string[] $mask
      * @param bool $left
      * @param bool $right
-     * @return UnicodeString
+     * @return static
      */
-    protected function doTrim($character_mask, bool $left = true, bool $right = true): self
+    protected function doTrim($mask, bool $left, bool $right): self
     {
-        $character_mask = static::from($character_mask);
-
-        $cm = $character_mask->codes;
-        $cp = $this->codes;
-        $start = 0;
-        $end = $this->length;
-
-        if ($left) {
-            for ($i = 0; $i < $this->length; $i++) {
-                if (!in_array($cp[$i], $cm)) {
-                    break;
-                }
-            }
-            $start = $i;
-        }
-
-        if ($right) {
-            for ($i = $this->length - 1; $i > $start; $i--) {
-                if (!in_array($cp[$i], $cm)) {
-                    break;
-                }
-            }
-            $end = $i + 1;
-        }
-
-        $cp = array_slice($cp, $start, $end - $start);
-        $ch = array_slice($this->chars, $start, $end - $start);
-
-        return new static($cp, $ch);
-    }
-
-    /**
-     * @param int $length
-     * @param string|UnicodeString $pad
-     * @param bool $left
-     * @return UnicodeString
-     */
-    protected function doPad(int $length, $pad, bool $left = true): self
-    {
-        if ($length <= 0) {
-            return new static([], []);
-        }
-
-        if ($length === $this->length) {
+        if ($this->length === 0) {
             return clone $this;
         }
 
-        if ($length < $this->length) {
-            if ($left) {
-                return $this->substring($this->length - $length);
-            } else {
-                return $this->substring(0, $length);
-            }
+        $mask = self::resolveCodePoints($mask);
+
+        if (empty($mask)) {
+            return clone $this;
         }
 
-        $pad = static::from($pad);
-
-        if ($pad->isEmpty()) {
-            $pad = static::from(' ');
-        }
-
-        $noch = $length - $this->length;
-        $mod = $noch % $pad->length;
-        $times = ($noch - $mod) / $pad->length;
-
-        $padchars = [];
-        $padcodes = [];
-
-        for ($i = 0; $i < $times; $i++) {
-            $padcodes = array_merge($padcodes, $pad->codes);
-            $padchars = array_merge($padchars, $pad->chars);
-        }
-
-        if ($mod != 0) {
-            $padcodes = array_merge($padcodes, array_slice($pad->codes, 0, $mod));
-            $padchars = array_merge($padchars, array_slice($pad->chars, 0, $mod));
-        }
+        $codes = $this->codes;
 
         if ($left) {
-            $cp = array_merge($padcodes, $this->codes);
-            $ch = array_merge($padchars, $this->chars);
-        } else {
-            $cp = array_merge($this->codes, $padcodes);
-            $ch = array_merge($this->chars, $padchars);
-        }
-
-        return new static($cp, $ch);
-    }
-
-    /**
-     * @param array $map
-     * @param int $cacheKey
-     * @return UnicodeString
-     */
-    protected function toCase(array $map, int $cacheKey): self
-    {
-        $cp = $this->codes;
-        $ch = $this->chars;
-        $ocp = $och = [];
-
-        for ($i = 0, $l = $this->length; $i < $l; $i++) {
-            $p = $cp[$i];
-            if (isset($map[$p])) {
-                $v = $map[$p];
-                $ocp[] = $v[0];
-                $och[] = $v[1];
-            } else {
-                $ocp[] = $p;
-                $och[] = $ch[$i];
+            while (in_array($codes[0], $mask, true)) {
+                array_shift($codes);
+                if (empty($codes)) {
+                    return new static();
+                }
             }
         }
 
-        $str = new static($ocp, $och);
-        $str->cache[$cacheKey] = true;
+        if ($right) {
+            $last = count($codes) - 1;
+            while (in_array($codes[$last], $mask, true)) {
+                array_pop($codes);
+                if (--$last < 0) {
+                    return new static();
+                }
+            }
+        }
 
-        return $str;
+        return new static($codes);
+    }
+
+    /*****************************************
+     ***** Static methods and properties *****
+     *****************************************/
+
+    /**
+     * @var int[][]
+     */
+    protected static $maps = [];
+
+    /**
+     * Creates an unicode string instance from raw string
+     * @param string $string
+     * @param string|null $encoding Defaults to UTF-8
+     * @param int $mode
+     * @return static
+     * @throws InvalidStringException
+     */
+    public static function from(string $string, string $encoding = null, int $mode = self::KEEP_CASE): self
+    {
+        if ($encoding !== null && strcasecmp($encoding, 'UTF-8') !== 0) {
+            if (false === $string = @iconv($encoding, 'UTF-8', $string)) {
+                throw new UnicodeException("Could not convert string from '$encoding' encoding to UTF-8 encoding");
+            }
+        }
+
+        $instance = new static(self::getCodePointsFromString($string, $mode));
+        if ($mode === self::KEEP_CASE) {
+            $instance->str = $string;
+        }
+        return $instance;
     }
 
     /**
-     * @param array $map
+     * Creates an unicode string instance from code points
+     * @param int[] $codes
+     * @param int $mode
+     * @return static
+     * @throws InvalidCodePointException
+     */
+    public static function fromCodePoints(array $codes, int $mode = self::KEEP_CASE): self
+    {
+        $map = self::getMapByMode($mode);
+
+        foreach ($codes as &$code) {
+            if (!is_int($codes) || !self::isValidCodePoint($code)) {
+                throw new InvalidCodePointException($code);
+            } else {
+                $code = $map[$code] ?? $code;
+            }
+        }
+
+        return new static(array_values($codes));
+    }
+
+    /**
+     * Creates an unicode string instance from chars
+     * @param string[] $chars
+     * @param int $mode
+     * @return static
+     */
+    public static function fromChars(array $chars, int $mode = self::KEEP_CASE): self
+    {
+        return new static(self::getCodePointsFromChars($chars, $mode));
+    }
+
+    /**
+     * Converts the char to corresponding code point
+     * @param string $char
+     * @return int Code point or -1 if char is invalid
+     */
+    public static function getCodePointFromChar(string $char): int
+    {
+        return self::getNextCodePoint($char, strlen($char));
+    }
+
+    /**
+     * Converts the code point to corresponding char
+     * @param int $code
+     * @return string The char or an empty string if code point is invalid
+     */
+    public static function getCharFromCodePoint(int $code): string
+    {
+        if ($code < 0) {
+            return '';
+        }
+
+        if ($code < 0x80) {
+            return chr($code);
+        }
+
+        if ($code < 0x800) {
+            return chr(($code >> 6) + 0xC0) . chr(($code & 0x3F) + 0x80);
+        }
+
+        if ($code >= 0xD800 && $code <= 0xDFFF) {
+            /*
+             The definition of UTF-8 prohibits encoding character numbers between
+             U+D800 and U+DFFF, which are reserved for use with the UTF-16
+             encoding form (as surrogate pairs) and do not directly represent characters.
+             */
+            return '';
+        }
+
+        if ($code <= 0xFFFF) {
+            return
+                chr(($code >> 12) + 0xE0) .
+                chr((($code >> 6) & 0x3F) + 0x80) .
+                chr(($code & 0x3F) + 0x80);
+        }
+
+        if ($code <= 0x10FFFF) {
+            return
+                chr(($code >> 18) + 0xF0) .
+                chr((($code >> 12) & 0x3F) + 0x80) .
+                chr((($code >> 6) & 0x3F) + 0x80) .
+                chr(($code & 0x3F) + 0x80);
+        }
+
+        /*
+         Restricted the range of characters to 0000-10FFFF (the UTF-16 accessible range).
+         */
+
+        return '';
+    }
+
+    /**
+     * Convert a string to a code point array
+     * @param string $str
+     * @param int $mode
+     * @return array
+     * @throws InvalidStringException
+     */
+    public static function getCodePointsFromString(string $str, int $mode = self::KEEP_CASE): array
+    {
+        $i = 0;
+        $codes = [];
+        $used_len = 0;
+        $length = strlen($str);
+
+        if ($mode === self::KEEP_CASE) {
+            while ($i < $length) {
+                $code = self::getNextCodePoint($str, $length, $i, $used_len);
+                if ($code >= 0) {
+                    $codes[] = $code;
+                    $i += $used_len;
+                } else {
+                    throw new InvalidStringException($str, $i + $used_len - 1);
+                }
+            }
+        } else {
+            $mode = self::getMapByMode($mode);
+            while ($i < $length) {
+                $code = self::getNextCodePoint($str, $length, $i, $used_len);
+                if ($code >= 0) {
+                    $codes[] = $mode[$code] ?? $code;
+                    $i += $used_len;
+                } else {
+                    throw new InvalidStringException($str, $i + $used_len - 1);
+                }
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Convert string to a char array
+     * @param string $str
+     * @return array
+     * @throws InvalidStringException
+     */
+    public static function getCharsFromString(string $str): array
+    {
+        $i = 0;
+        $chars = [];
+        $used_len = 0;
+        $length = strlen($str);
+
+        while ($i < $length) {
+            $char = self::getNextChar($str, $length, $i, $used_len);
+            if ($char !== '') {
+                $chars[] = $char;
+                $i += $used_len;
+            } else {
+                throw new InvalidStringException($str, $i + $used_len - 1);
+            }
+        }
+
+        return $chars;
+    }
+
+    /**
+     * Converts each char to a code point
+     * @param array $chars
+     * @param int $mode
+     * @return array
+     * @throws InvalidCharException
+     */
+    public static function getCodePointsFromChars(array $chars, int $mode = self::KEEP_CASE): array
+    {
+        $mode = self::getMapByMode($mode);
+
+        foreach ($chars as &$char) {
+            $code = self::getCodePointFromChar($char);
+            if ($code === -1) {
+                throw new InvalidCharException($char);
+            } else {
+                $char = $mode[$code] ?? $code;
+            }
+        }
+
+        return $chars;
+    }
+
+    /**
+     * Converts each code point to a char
+     * @param array $codes
+     * @param int $mode
+     * @return array
+     * @throws InvalidCodePointException
+     */
+    public static function getCharsFromCodePoints(array $codes, int $mode = self::KEEP_CASE): array
+    {
+        $mode = self::getMapByMode($mode);
+
+        foreach ($codes as &$code) {
+            $char = self::getCharFromCodePoint($mode[$code] ?? $code);
+            if ($char === '') {
+                throw new InvalidCodePointException($code);
+            } else {
+                $code = $char;
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Converts all code points to chars and returns the string
+     * Invalid code points are ignored
+     * @param array $codes
+     * @param int $mode
+     * @return string
+     */
+    public static function getStringFromCodePoints(array $codes, int $mode = self::KEEP_CASE): string
+    {
+        return implode('', self::getCharsFromCodePoints($codes, $mode));
+    }
+
+    /**
+     * Concatenates all chars
+     * @param array $chars
+     * @return string
+     */
+    public static function getStringFromChars(array $chars): string
+    {
+        return implode('', $chars);
+    }
+
+    /**
+     * @param array $codes
+     * @param int $mode
+     * @return array
+     */
+    public static function getMappedCodePoints(array $codes, int $mode): array
+    {
+        if ($mode === self::KEEP_CASE) {
+            return $codes;
+        }
+
+        $mode = self::getMapByMode($mode);
+
+        if (empty($mode)) {
+            return $codes;
+        }
+
+        foreach ($codes as &$code) {
+            $code = $mode[$code] ?? $code;
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Checks if a code point is valid
+     * @param int $code
      * @return bool
      */
-    protected function isCase(array $map): bool
+    public static function isValidCodePoint(int $code): bool
     {
-        foreach ($this->codes as $cp) {
-            if (isset($map[$cp])) {
-                return false;
+        if ($code < 0 || $code > 0x10FFFF) {
+            return false;
+        }
+
+        return $code < 0xD800 || $code > 0xDFFF;
+    }
+
+    /**
+     * Checks if a char is valid
+     * @param string $char
+     * @return bool
+     */
+    public static function isValidChar(string $char): bool
+    {
+        if ($char === '') {
+            return false;
+        }
+
+        $length = strlen($char);
+
+        if (self::getNextCodePoint($char, $length, 0, $used_len) >= 0) {
+            return $length === $used_len;
+        }
+
+        return false;
+    }
+
+    /**
+     * Internal function used to get next code point from string
+     * @param string $char
+     * @param int $length
+     * @param int $offset
+     * @param int|null $used_len
+     * @return int
+     */
+    protected static function getNextCodePoint(string &$char, int $length, int $offset = 0, int &$used_len = null): int
+    {
+        $used_len = 0;
+        $length -= $offset;
+
+        if ($length < 1) {
+            return -1;
+        }
+
+        // 0x00-0x7F
+        $used_len = 1;
+        $ord0 = ord($char[$offset]);
+
+        if ($ord0 < 0x80) {
+            return $ord0;
+        } elseif ($length < 2) {
+            return -1;
+        }
+
+        // 0xC2-0xDF	0x80-0xBF
+
+        if ($ord0 < 0xC2) {
+            return -1;
+        }
+
+        $used_len = 2;
+        $ord1 = ord($char[$offset + 1]);
+
+        if ($ord0 < 0xE0) {
+            if ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                return -1;
             }
+
+            return ($ord0 - 0xC0) * 64 + $ord1 - 0x80;
+        } elseif ($length < 3) {
+            return -1;
         }
-        return true;
+
+        // 0xE0-0xE0	0xA0-0xBF	0x80-0xBF
+        // 0xE1-0xEC	0x80-0xBF	0x80-0xBF
+        // 0xED-0xED	0x80-0x9F	0x80-0xBF
+        // 0xEE-0xEF	0x80-0xBF	0x80-0xBF
+
+        $used_len = 3;
+        $ord2 = ord($char[$offset + 2]);
+
+        if ($ord0 < 0xF0) {
+            if ($ord0 === 0xE0) {
+                if ($ord1 < 0xA0 || $ord1 >= 0xC0) {
+                    $used_len = 2;
+                    return -1;
+                }
+            } elseif ($ord0 === 0xED) {
+                if ($ord1 < 0x80 || $ord1 >= 0xA0) {
+                    $used_len = 2;
+                    return -1;
+                }
+            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                $used_len = 2;
+                return -1;
+            }
+
+            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                return -1;
+            }
+
+            return ($ord0 - 0xE0) * 0x1000 + ($ord1 - 0x80) * 64 + $ord2 - 0x80;
+        } elseif ($length < 4) {
+            return -1;
+        }
+
+        // 0xF0-0xF0	0x90-0xBF	0x80-0xBF	0x80-0xBF
+        // 0xF1-0xF3	0x80-0xBF	0x80-0xBF	0x80-0xBF
+        // 0xF4-0xF4	0x80-0x8F	0x80-0xBF	0x80-0xBF
+
+        $used_len = 4;
+        $ord3 = ord($char[$offset + 3]);
+
+        if ($ord0 < 0xF5) {
+            if ($ord0 === 0xF0) {
+                if ($ord1 < 0x90 || $ord1 >= 0xC0) {
+                    $used_len = 2;
+                    return -1;
+                }
+            } elseif ($ord0 === 0xF4) {
+                if ($ord1 < 0x80 || $ord1 >= 0x90) {
+                    $used_len = 2;
+                    return -1;
+                }
+            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                $used_len = 2;
+                return -1;
+            }
+
+            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                $used_len = 3;
+                return -1;
+            }
+
+            if ($ord3 < 0x80 || $ord3 >= 0xC0) {
+                return -1;
+            }
+
+            return ($ord0 - 0xF0) * 0x40000 + ($ord1 - 0x80) * 0x1000 + ($ord2 - 0x80) * 64 + $ord3 - 0x80;
+        }
+
+        $used_len = 1;
+
+        return -1;
     }
 
     /**
-     * @return array
+     * Internal function used to get next char from string
+     * @param string $char
+     * @param int $length
+     * @param int $offset
+     * @param int|null $used_len
+     * @return string
      */
-    protected function getUpperMap(): array
+    protected static function getNextChar(string &$char, int $length, int $offset = 0, int &$used_len = null): string
     {
-        static $upper;
+        $used_len = 0;
+        $length -= $offset;
 
-        if ($upper === null) {
-            $upper = require __DIR__ . '/../res/upper.php';
+        if ($length < 1) {
+            return '';
         }
 
-        return $upper;
+        // 0x00-0x7F
+        $used_len = 1;
+        $ord0 = ord($char[$offset]);
+
+        if ($ord0 < 0x80) {
+            return $char[$offset];
+        } elseif ($length < 2) {
+            return '';
+        }
+
+        // 0xC2-0xDF	0x80-0xBF
+
+        if ($ord0 < 0xC2) {
+            return '';
+        }
+
+        $used_len = 2;
+        $ord1 = ord($char[$offset + 1]);
+
+        if ($ord0 < 0xE0) {
+            if ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                return '';
+            }
+
+            return $char[$offset] . $char[$offset + 1];
+        } elseif ($length < 3) {
+            return '';
+        }
+
+        // 0xE0-0xE0	0xA0-0xBF	0x80-0xBF
+        // 0xE1-0xEC	0x80-0xBF	0x80-0xBF
+        // 0xED-0xED	0x80-0x9F	0x80-0xBF
+        // 0xEE-0xEF	0x80-0xBF	0x80-0xBF
+
+        $used_len = 3;
+        $ord2 = ord($char[$offset + 2]);
+
+        if ($ord0 < 0xF0) {
+            if ($ord0 === 0xE0) {
+                if ($ord1 < 0xA0 || $ord1 >= 0xC0) {
+                    $used_len = 2;
+                    return '';
+                }
+            } elseif ($ord0 === 0xED) {
+                if ($ord1 < 0x80 || $ord1 >= 0xA0) {
+                    $used_len = 2;
+                    return '';
+                }
+            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                $used_len = 2;
+                return '';
+            }
+
+            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                return '';
+            }
+
+            return $char[$offset] . $char[$offset + 1] . $char[$offset + 2];
+        } elseif ($length < 4) {
+            return '';
+        }
+
+        // 0xF0-0xF0	0x90-0xBF	0x80-0xBF	0x80-0xBF
+        // 0xF1-0xF3	0x80-0xBF	0x80-0xBF	0x80-0xBF
+        // 0xF4-0xF4	0x80-0x8F	0x80-0xBF	0x80-0xBF
+
+        $used_len = 4;
+        $ord3 = ord($char[$offset + 3]);
+
+        if ($ord0 < 0xF5) {
+            if ($ord0 === 0xF0) {
+                if ($ord1 < 0x90 || $ord1 >= 0xC0) {
+                    $used_len = 2;
+                    return '';
+                }
+            } elseif ($ord0 === 0xF4) {
+                if ($ord1 < 0x80 || $ord1 >= 0x90) {
+                    $used_len = 2;
+                    return '';
+                }
+            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                $used_len = 2;
+                return '';
+            }
+
+            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                $used_len = 3;
+                return '';
+            }
+
+            if ($ord3 < 0x80 || $ord3 >= 0xC0) {
+                return '';
+            }
+
+            return $char[$offset] . $char[$offset + 1] . $char[$offset + 2] . $char[$offset + 3];
+        }
+
+        $used_len = 1;
+
+        return '';
     }
 
     /**
+     * @param string|self|int[]|string[] $text
+     * @param int $mode
      * @return array
      */
-    protected function getLowerMap(): array
+    protected static function resolveCodePoints($text, int $mode = self::KEEP_CASE): array
     {
-        static $lower;
-
-        if ($lower === null) {
-            $lower = require __DIR__ . '/../res/lower.php';
+        if ($text instanceof self) {
+            return $text->getMappedCodes($mode);
         }
 
-        return $lower;
+        if (is_string($text)) {
+            return self::getCodePointsFromString($text, $mode);
+        }
+
+        if (is_array($text) && $text) {
+            return is_int($text[0])
+                ? self::getMappedCodePoints($text, $mode)
+                : self::getCodePointsFromChars($text, $mode);
+        }
+
+        return [];
     }
 
     /**
-     * @return array
+     * @param self|string|int|string[]|int[] $text
+     * @param int $invalid
+     * @return int
      */
-    protected function getAsciiMap(): array
+    protected static function resolveFirstCodePoint($text, int $invalid = -1): int
     {
-        static $ascii;
-
-        if ($ascii === null) {
-            $ascii = require __DIR__ . '/../res/ascii.php';
+        if ($text instanceof self) {
+            return $text->length === 0 ? $invalid : $text->codes[0];
         }
 
-        return $ascii;
+        if (is_array($text)) {
+            if (empty($text)) {
+                return $invalid;
+            }
+            $text = reset($text);
+        }
+
+        if (is_string($text)) {
+            $text = self::getNextCodePoint($text, strlen($text));
+            return $text === -1 ? $invalid : $text;
+        }
+
+        if (is_int($text)) {
+            return self::isValidCodePoint($text) ? $text : $invalid;
+        }
+
+        return $invalid;
     }
 
     /**
-     * @return array
+     * @param int $mode
+     * @return int[]
      */
-    protected function getCharMap(): array
+    protected static function getMapByMode(int $mode): array
     {
-        static $char;
-
-        if ($char === null) {
-            $char = require __DIR__ . '/../res/char.php';
+        if (isset(self::$maps[$mode])) {
+            return self::$maps[$mode];
         }
 
-        return $char;
-    }
+        switch ($mode) {
+            case self::LOWER_CASE:
+                $file = 'lower';
+                break;
+            case self::UPPER_CASE:
+                $file = 'upper';
+                break;
+            case self::ASCII_CONV:
+                $file = 'ascii';
+                break;
+            case self::FOLD_CASE:
+                $file = 'fold';
+                break;
+            default:
+                return [];
+        }
 
+        return self::$maps[$mode] = include(__DIR__ . "/../res/{$file}.php");
+    }
 }

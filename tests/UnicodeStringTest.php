@@ -1,6 +1,6 @@
 <?php
 /* ===========================================================================
- * Copyright 2018 Zindex Software
+ * Copyright 2018-2020 Zindex Software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,426 +17,720 @@
 
 namespace Opis\String\Test;
 
+use RuntimeException;
+use OutOfBoundsException;
 use PHPUnit\Framework\TestCase;
-use Opis\String\UnicodeString as wstring;
+use Opis\String\UnicodeString as wstr;
+use Opis\String\Exception\{
+    UnicodeException,
+    InvalidStringException
+};
 
 class UnicodeStringTest extends TestCase
 {
+
+    public function testFrom()
+    {
+        $this->assertEquals("aBcDe", wstr::from("aBcDe"));
+        $this->assertEquals("abcde", wstr::from("aBcDe", null, wstr::LOWER_CASE));
+        $this->assertEquals("ABCDE", wstr::from("aBcDe", null, wstr::UPPER_CASE));
+
+        $this->assertEquals("ăĂâÂîÎșȘțȚ", wstr::from("ăĂâÂîÎșȘțȚ"));
+        $this->assertEquals("ăăââîîșșțț", wstr::from("ăĂâÂîÎșȘțȚ", null, wstr::LOWER_CASE));
+        $this->assertEquals("ĂĂÂÂÎÎȘȘȚȚ", wstr::from("ăĂâÂîÎșȘțȚ", null, wstr::UPPER_CASE));
+    }
+
+    public function testFromInvalidEncoding()
+    {
+        $this->expectException(UnicodeException::class);
+        $this->expectExceptionMessage("Could not convert string from 'error_encoding' encoding to UTF-8 encoding");
+
+        wstr::from('abcd', 'error_encoding');
+    }
+
+    /**
+     * @dataProvider invalidStringOffsetDataProvider
+     */
+    public function testFromInvalidString(string $str, int $offset)
+    {
+        $this->expectException(InvalidStringException::class);
+        $this->expectExceptionMessage("Invalid UTF-8 string at offset {$offset}");
+
+        wstr::from($str);
+    }
+
+    public function invalidStringOffsetDataProvider()
+    {
+        return [
+            ["\x80", 0],
+            ["\xC1", 0],
+            ["\xF5", 0],
+
+            ["\xC2\x7F", 1],
+            ["\xC2\xC0", 1],
+
+            ["\xE0\x9F\x80", 1],
+            ["\xE0\xC0\x80", 1],
+            ["\xE0\xA0\x7F", 2],
+            ["\xE0\xA0\xC0", 2],
+            ["\xE1\x80\xC0", 2],
+
+            ["\xF4\x90\x80\x80", 1],
+            ["\xF4\x80\x7F\x80", 2],
+            ["\xF4\x80\x80\xC0", 3],
+        ];
+    }
+
+    /**
+     * @dataProvider codePointsDataProvider
+     */
+    public function testCodePoints(string $str, array $codes)
+    {
+        $this->assertEquals($codes, wstr::from($str)->codePoints());
+    }
+
+    public function codePointsDataProvider()
+    {
+        return [
+            ["\u{61}\u{41}\u{103}\u{102}", [0x61, 0x41, 0x103, 0x102]],
+            ["ăĂâÂîÎșȘțȚ", [0x103, 0x102, 0xE2, 0xC2, 0xEE, 0xCE, 0x219, 0x218, 0x21B, 0x21A]],
+        ];
+    }
+
+    public function testChars()
+    {
+        $this->assertEquals(['ă', 'Ă', 'â', 'Â', 'î', 'Î', 'ș', 'Ș', 'ț', 'Ț'], wstr::from("ăĂâÂîÎșȘțȚ")->chars());
+    }
+
     public function testLength()
     {
-        $this->assertEquals(10, wstring::from('ăĂâÂîÎşŞţŢ')->length());
+        $this->assertEquals(0, wstr::from('')->length());
+        $this->assertEquals(1, wstr::from(' ')->length());
+        $this->assertEquals(5, wstr::from('abcde')->length());
+        $this->assertEquals(10, wstr::from('ăĂâÂîÎșȘțȚ')->length());
+        $this->assertEquals(15, wstr::from('abcdeăĂâÂîÎșȘțȚ')->length());
     }
 
-    public function testToString()
+    public function testIsEmpty()
     {
-        $this->assertEquals('ăĂâÂîÎşŞţŢ', (string) wstring::from('ăĂâÂîÎşŞţŢ'));
-    }
+        $this->assertTrue(wstr::from('')->isEmpty());
 
-    public function testArrayAccess()
-    {
-        $str = wstring::from('ăĂâÂîÎşŞţŢ');
-        $this->assertEquals('ă', $str[0]);
-        $this->assertEquals('Ţ', $str[9]);
-        $this->assertEquals('Î', $str[5]);
+        $this->assertFalse(wstr::from(' ')->isEmpty());
+        $this->assertFalse(wstr::from('0')->isEmpty());
+        $this->assertFalse(wstr::from("\x00")->isEmpty());
     }
 
     public function testEquals()
     {
-        $this->assertTrue(wstring::from('abc')->equals('abc'));
-        $this->assertFalse(wstring::from('Abc')->equals('abc'));
+        $this->assertTrue(wstr::from("abc")->equals("abc"));
+        $this->assertTrue(wstr::from("abc")->equals("ABC", true));
+        $this->assertTrue(wstr::from("ăĂâÂîÎșȘțȚ")->equals("ăĂâÂîÎșȘțȚ"));
+        $this->assertTrue(wstr::from("ăâîșț")->equals("ĂÂÎȘȚ", true));
+
+        $this->assertFalse(wstr::from("abc")->equals("ABC"));
+        $this->assertFalse(wstr::from("ăâîșț")->equals("ĂÂÎȘȚ"));
     }
 
-    public function testEqualsCaseInsensitive()
+    /**
+     * @dataProvider compareToDataProvider
+     */
+    public function testCompareTo(string $str, string $to, int $result, bool $ignoreCase = false)
     {
-        $this->assertTrue(wstring::from('Abc')->equals('aBc', true));
-        $this->assertFalse(wstring::from('Abd')->equals('aBc', true));
+        $this->assertEquals($result, wstr::from($str)->compareTo($to, $ignoreCase));
     }
 
-    public function testCompareTo()
+    public function compareToDataProvider()
     {
-        $this->assertEquals(0, wstring::from('abc')->compareTo('abc'));
-        $this->assertEquals(1, wstring::from('abcd')->compareTo('abc'));
-        $this->assertEquals(1, wstring::from('abc')->compareTo('Abc'));
-        $this->assertEquals(-1, wstring::from('Abc')->compareTo('abc'));
-        $this->assertEquals(-1, wstring::from('abc')->compareTo('abcd'));
-    }
+        return [
+            ['abc', 'abc', 0],
+            ['abc', 'ABC', 0, true],
+            ['abc', 'ABC', 1],
+            ['ABC', 'abc', -1],
+            ["abc", "ab", 1],
+            ["ab", "abc", -1],
 
-    public function testCompareToCaseInsensitive()
-    {
-        $this->assertEquals(0, wstring::from('abc')->compareTo('abc', true));
-        $this->assertEquals(1, wstring::from('abcd')->compareTo('abc', true));
-        $this->assertEquals(0, wstring::from('abc')->compareTo('Abc', true));
-        $this->assertEquals(0, wstring::from('Abc')->compareTo('abc', true));
-        $this->assertEquals(-1, wstring::from('abc')->compareTo('abcd', true));
+            ["ĂÂÎȘȚ", "ĂÂÎȘȚ", 0],
+            ["ăâîșț", "ĂÂÎȘȚ", 1],
+            ["ĂÂÎȘȚ", "ăâîșț", -1],
+            ["ĂÂÎȘȚ", "ăâîșț", 0, true],
+        ];
     }
 
     public function testContains()
     {
-        $this->assertTrue(wstring::from('abcdefg')->contains('cde'));
-        $this->assertTrue(wstring::from('abcdefg')->contains('abc'));
-        $this->assertTrue(wstring::from('abcdefg')->contains('efg'));
-        $this->assertFalse(wstring::from('abcdefg')->contains('cda'));
+        $this->assertTrue(wstr::from("abcde")->contains("bc"));
+        $this->assertFalse(wstr::from("abcde")->contains("bf"));
+
+        $this->assertFalse(wstr::from("abcde")->contains("Bc"));
+        $this->assertTrue(wstr::from("abcde")->contains("Bc", true));
+
+        $this->assertFalse(wstr::from("ĂÂÎȘȚ")->contains("ăâîșț"));
+        $this->assertTrue(wstr::from("ĂÂÎȘȚ")->contains("ăâîșț", true));
+
+        $this->assertFalse(wstr::from("abc")->contains(''));
     }
 
-
-    public function testContainsCaseInsensitive()
+    /**
+     * @dataProvider startsWithDataProvider
+     */
+    public function testStartsWith(string $str, string $start, bool $result, bool $ignoreCase = false)
     {
-        $this->assertTrue(wstring::from('abcdefg')->contains('CDE', true));
-        $this->assertTrue(wstring::from('abcdefg')->contains('ABC', true));
-        $this->assertTrue(wstring::from('abcdefg')->contains('EFG', true));
-        $this->assertFalse(wstring::from('abcdefg')->contains('CDA'));
+        $this->assertEquals($result, wstr::from($str)->startsWith($start, $ignoreCase));
     }
 
-    public function testStartsWith()
+    public function startsWithDataProvider()
     {
-        $this->assertTrue(wstring::from('abcde')->startsWith('ab'));
-        $this->assertFalse(wstring::from('abcde')->startsWith('ac'));
+        return [
+            ["abc", "a", true],
+            ["abc", "ab", true],
+            ["abc", "abc", true],
+
+            ["abc", "abcd", false],
+            ["abc", "b", false],
+
+            ["abc", "A", false],
+            ["abc", "A", true, true],
+            ["aBc", "Ab", true, true],
+
+            ["abc", "", false],
+
+            ["dabc", "abc", false],
+            ["Abc", "ab", false],
+
+            ["ĂÂÎȘȚ", "A", false],
+            ["ĂÂÎȘȚ", "A", false, true],
+            ["ĂÂÎȘȚ", "Ă", true],
+            ["ĂÂÎȘȚ", "ă", false],
+            ["ĂÂÎȘȚ", "ăâ", true, true],
+        ];
     }
 
-    public function testStartsWithCaseInsensitive()
+    /**
+     * @dataProvider endsWithDataProvider
+     */
+    public function testEndsWith(string $str, string $end, bool $result, bool $ignoreCase = false)
     {
-        $this->assertTrue(wstring::from('abcde')->startsWith('AB', true));
-        $this->assertFalse(wstring::from('abcde')->startsWith('AC', true));
+        $this->assertEquals($result, wstr::from($str)->endsWith($end, $ignoreCase));
     }
 
-    public function testEndsWith()
+    public function endsWithDataProvider()
     {
-        $this->assertTrue(wstring::from('abcde')->endsWith('de'));
-        $this->assertFalse(wstring::from('abcde')->endsWith('ce'));
+        return [
+            ["abc", "c", true],
+            ["abc", "bc", true],
+            ["abc", "abc", true],
+            ["abc", "C", false],
+            ["abc", "Bc", false],
+            ["abC", "bc", false],
+            ["abc", "", false],
+
+            ["ĂÂÎȘȚ", "T", false],
+            ["ĂÂÎȘȚ", "T", false, true],
+            ["ĂÂÎȘȚ", "Ț", true],
+            ["ĂÂÎȘȚ", "ț", false],
+            ["ĂÂÎȘȚ", "șț", true, true],
+        ];
     }
 
-    public function testEndsWithOffsetShouldBeLessThanZero()
+    /**
+     * @dataProvider indexOfProvider
+     */
+    public function testIndexOf(string $str, string $needle, int $result, int $offset = 0, bool $ignoreCase = false)
     {
-        $this->assertFalse(wstring::from('abcde')->endsWith('ceffff'));
+        $this->assertEquals($result, wstr::from($str)->indexOf($needle, $offset, $ignoreCase));
     }
 
-    public function testEndsWithCaseInsensitive()
+    public function indexOfProvider()
     {
-        $this->assertTrue(wstring::from('abcde')->endsWith('DE', true));
-        $this->assertFalse(wstring::from('abcde')->endsWith('CE', true));
+        return [
+            ["abc-abc", "a", 0],
+            ["abc-abc", "a", 4, 1],
+            ["abc-abc", "a", -1, 5],
+            ["abc-abc", "A", -1],
+            ["abc-abc", "A", 0, 0, true],
+            ["abc-abc", "A", 4, 1, true],
+            ["abc-abc", "A", -1, 5, true],
+
+            ["Abc-Cba", "b", 5, -2],
+            ["Abc-Cba", "b", 5, -5],
+            ["Abc-Cba", "b", 1, -6],
+            ["Abc-Cba", "b", -1, -100],
+
+            ["abcAbcabCABC", "Ab", 3],
+            ["abcAbcabCABC", "Ab", 0, 0, true],
+            ["abcAbcabCABC", "Ab", 3, 1, true],
+
+            ["ĂÂÎȘȚ", "ÎȘ", 2],
+            ["ĂÂÎȘȚ", "îș", 2, 0, true],
+        ];
     }
 
-    public function testIndexOf()
+    /**
+     * @dataProvider lastIndexOfDataProvider
+     */
+    public function testLastIndexOf(string $str, string $needle, int $result, int $offset = 0, bool $ignoreCase = false)
     {
-        $this->assertEquals(0, wstring::from('abcabc')->indexOf('ab'));
-        $this->assertEquals(3, wstring::from('abcabc')->indexOf('ab', 1));
+        $this->assertEquals($result, wstr::from($str)->lastIndexOf($needle, $offset, $ignoreCase));
     }
 
-    public function testIndexOfShouldBeFalse()
+    public function lastIndexOfDataProvider()
     {
-        $this->assertFalse(wstring::from('abcabc')->indexOf('abcdefg'));
+        return [
+            ["abacad", "a", 4],
+            ["abacad", "A", -1],
+            ["abc", "a", -1, 1],
+            ["abAbabABaB", "Ab", 8, 0, true],
+
+            // strrpos() like tests
+            ["0123456789a123456789b123456789c", "0", 0],
+            ["0123456789a123456789b123456789c", "0", -1, 1],
+            ["0123456789a123456789b123456789c", "7", 27, 20],
+            ["0123456789a123456789b123456789c", "7", -1, 28],
+            ["0123456789a123456789b123456789c", "7", 17, -5],
+            ["0123456789a123456789b123456789c", "c", -1, -2],
+            ["0123456789a123456789b123456789c", "9c", 29, -2],
+        ];
     }
 
-    public function testIndexOfOffsetShouldBeChangedIntoZero()
+    /**
+     * @dataProvider ensurePrefixDataProvider
+     */
+    public function testEnsurePrefix(string $str, string $prefix, string $result, bool $ignoreCase = false, bool $allow = true)
     {
-        $this->assertEquals(0, wstring::from('abcabc')->indexOf('ab', -1));
+        $this->assertEquals($result, (string)wstr::from($str)->ensurePrefix($prefix, $ignoreCase, $allow));
     }
 
-    public function testIndexOfCaseInsensitive()
+    public function ensurePrefixDataProvider()
     {
-        $this->assertEquals(0, wstring::from('abcabc')->indexOf('AB', 0, true));
-        $this->assertEquals(3, wstring::from('abcabc')->indexOf('AB', 1, true));
+        return [
+            ["abc", "id_", "id_abc"], // needs "id_" prefix
+            ["_abc", "id_", "id_abc"], // needs only "id" prefix
+            ["d_abc", "id_", "id_abc"], // needs only "i" prefix
+            ["id_abc", "id_", "id_abc"], // already prefixed
+
+            ["ID_abc", "id_", "id_ID_abc"], // needs "id_" prefix ("ID_" != "id_")
+            ["D_abc", "id_", "iD_abc", true], // needs only "i" prefix (case insensitive)
+
+            ["i", "id_", "id_"], // needs only "d_" suffix so the resulting string will still be prefixed with "id_"
+            ["id_", "id_", "id_", false, true], // the result can be just the prefix
+            ["id_", "id_", "id_id_", false, false], // result cannot be only the prefix
+            ["id_abc", "id_", "id_abc", false, false], // the resulted string is not just the prefix
+
+            // others
+            ["xxx", "xxxabc", "xxxabc"],
+            ["abcdef", "xyz_", "xyz_abcdef"],
+        ];
     }
 
-    public function testLastIndexOf()
+    /**
+     * @dataProvider ensureSuffixDataProvider
+     */
+    public function testEnsureSuffix(string $str, string $suffix, string $result, bool $ignoreCase = false, bool $allow = true)
     {
-        $this->assertEquals(3, wstring::from('abcabcAbc')->lastIndexOf('ab'));
+        $this->assertEquals($result, (string)wstr::from($str)->ensureSuffix($suffix, $ignoreCase, $allow));
     }
 
-    public function testLastIndexOfShouldBeFalse()
+    public function ensureSuffixDataProvider()
     {
-        $this->assertFalse(wstring::from('abcabcAbc')->lastIndexOf('abcdefghijk'));
-    }
+        return [
+            ["abc", "_id", "abc_id"], // needs "_id" suffix
+            ["abc_", "_id", "abc_id"], // needs only "id" suffix
+            ["abc_i", "_id", "abc_id"], // needs only "d" suffix
+            ["abc_id", "_id", "abc_id"], // already suffixed
 
-    public function testLastIndexOfCaseInsensitive()
-    {
-        $this->assertEquals(6, wstring::from('abcabcAbc')->lastIndexOf('AB', true));
-    }
+            ["abc_ID", "_id", "abc_ID_id"], // needs "_id" suffix ("_ID" != "_id")
+            ["abc_I", "_id", "abc_Id", true], // needs only "d" suffix (case insensitive)
 
-    public function testEnsurePrefix()
-    {
-        $this->assertEquals("abc", (string) wstring::from('abc')->ensurePrefix('a'));
-        $this->assertEquals("Aabc", (string) wstring::from('abc')->ensurePrefix('A'));
-        $this->assertEquals("aAbc", (string) wstring::from('Abc')->ensurePrefix('a'));
-        $this->assertEquals("abc", (string) wstring::from('abc')->ensurePrefix('A', true));
-        $this->assertEquals("Abc", (string) wstring::from('Abc')->ensurePrefix('a', true));
-    }
+            ["d", "_id", "_id"], // needs only "_i" prefix so the resulting string will still be suffixed with "_id"
+            ["_id", "_id", "_id", false, true], // the result can be just the suffix
+            ["_id", "_id", "_id_id", false, false], // result cannot be only the suffix
+            ["abc_id", "_id", "abc_id", false, false], // the resulted string is not just the suffix
 
-    public function testEnsureSuffix()
-    {
-        $this->assertEquals("abc", (string) wstring::from('abc')->ensureSuffix('c'));
-        $this->assertEquals("abcC", (string) wstring::from('abc')->ensureSuffix('C'));
-        $this->assertEquals("abCc", (string) wstring::from('abC')->ensureSuffix('c'));
-        $this->assertEquals("abc", (string) wstring::from('abc')->ensureSuffix('C', true));
-        $this->assertEquals("abC", (string) wstring::from('abC')->ensureSuffix('c', true));
+            // others
+
+            ["abc", "xxxabc", "xxxabc"],
+            ["abcdef", "_xyz", "abcdef_xyz"],
+        ];
     }
 
     public function testAppend()
     {
-        $this->assertEquals("abcdef", (string) wstring::from('abc')->append('def'));
+        $this->assertEquals("abcDEF", (string)wstr::from("abc")->append("DEF"));
+        $this->assertEquals("AbCdef", (string)wstr::from("AbC")->append("DeF", wstr::LOWER_CASE));
+        $this->assertEquals("AbCDEF", (string)wstr::from("AbC")->append("dEf", wstr::UPPER_CASE));
     }
 
     public function testPrepend()
     {
-        $this->assertEquals("abcdef", (string) wstring::from('def')->prepend('abc'));
+        $this->assertEquals("DEFabc", (string)wstr::from("abc")->prepend("DEF"));
+        $this->assertEquals("defabc", (string)wstr::from("abc")->prepend("DeF", wstr::LOWER_CASE));
+        $this->assertEquals("DEFabc", (string)wstr::from("abc")->prepend("dEf", wstr::UPPER_CASE));
     }
 
-    public function testInsert()
+    /**
+     * @dataProvider insertDataProvider
+     */
+    public function testInsert(string $str, string $add, int $offset, string $result, int $case = wstr::KEEP_CASE)
     {
-        $this->assertEquals("x012345", (string) wstring::from('012345')->insert('x', 0));
-        $this->assertEquals("x012345", (string) wstring::from('012345')->insert('x', -10));
-        $this->assertEquals("012x345", (string) wstring::from('012345')->insert('x', 3));
-        $this->assertEquals("0123x45", (string) wstring::from('012345')->insert('x', 4));
-        $this->assertEquals("01234x5", (string) wstring::from('012345')->insert('x', 5));
-        $this->assertEquals("012345x", (string) wstring::from('012345')->insert('x', 6));
-        $this->assertEquals("012345x", (string) wstring::from('012345')->insert('x', 100));
+        $this->assertEquals($result, (string)wstr::from($str)->insert($add, $offset, $case));
     }
 
-    public function testTrim()
+    public function insertDataProvider()
     {
-        $this->assertEquals("abc", (string) wstring::from("   \nabc\n\r\t \n")->trim());
+        return [
+            ["012345", "abc", 0, "abc012345"],
+            ["012345", "abc", 1, "0abc12345"],
+            ["012345", "abc", -2, "0123abc45"],
+            ["012345", "ABC", 0, "abc012345", wstr::LOWER_CASE],
+            ["012345", "abc", 0, "ABC012345", wstr::UPPER_CASE],
+        ];
     }
 
-    public function testRightTrim()
+    /**
+     * @dataProvider removeDataProvider
+     */
+    public function testRemove(string $str, int $offset, $length, string $result)
     {
-        $this->assertEquals("   \nabc", (string) wstring::from("   \nabc\n\r\t \n")->trimRight());
+        $this->assertEquals($result, (string)wstr::from($str)->remove($offset, $length));
     }
 
-    public function testLeftTrim()
+    public function removeDataProvider()
     {
-        $this->assertEquals("abc\n\r\t \n", (string) wstring::from("   \nabc\n\r\t \n")->trimLeft());
+        return [
+            ["0123456789", 0, 3, "3456789"],
+            ["0123456789", 2, 1, "013456789"],
+            ["0123456789", 5, null, "01234"],
+            ["0123456789", -3, null, "0123456"],
+            ["0123456789", -3, 2, "01234569"],
+        ];
     }
 
-    public function testReplace()
+    /**
+     * @dataProvider trimDataProvider
+     */
+    public function testTrim(string $str, $chars, string $result)
     {
-        $this->assertEquals("0x0a0", (string) wstring::from("0a0a0")->replace("a", "x"));
-        $this->assertEquals("0a0x0", (string) wstring::from("0a0a0")->replace("a", "x", 2));
+        $this->assertEquals($result, (string)wstr::from($str)->trim($chars ?? " \t\n\r\0\x0B"));
     }
 
-    public function testReplaceWithSubjectIsNotInTheSting()
+    public function trimDataProvider()
     {
-        $this->assertInstanceOf("Opis\String\UnicodeString", wstring::from("0a0a0")->replace("x", "a"));
+        return array_map(function (array $v) {
+            return [$v[0], $v[1], $v[2]];
+        }, $this->trimData());
     }
 
-    public function testReplaceAll()
+    /**
+     * @dataProvider trimLeftDataProvider
+     */
+    public function testTrimLeft(string $str, $chars, string $result)
     {
-        $this->assertEquals("0x0x0", (string) wstring::from("0a0a0")->replaceAll("a", "x"));
+        $this->assertEquals($result, (string)wstr::from($str)->trimLeft($chars ?? " \t\n\r\0\x0B"));
     }
 
-    public function testReplaceAllWithSubjectIsNotInTheSting()
+    public function trimLeftDataProvider()
     {
-        $this->assertInstanceOf("Opis\String\UnicodeString", wstring::from("0a0a0")->replaceAll("x", "a"));
+        return array_map(function (array $v) {
+            return [$v[0], $v[1], $v[3]];
+        }, $this->trimData());
+    }
+
+    /**
+     * @dataProvider trimRightDataProvider
+     */
+    public function testTrimRight(string $str, $chars, string $result)
+    {
+        $this->assertEquals($result, (string)wstr::from($str)->trimRight($chars ?? " \t\n\r\0\x0B"));
+    }
+
+    public function trimRightDataProvider()
+    {
+        return array_map(function (array $v) {
+            return [$v[0], $v[1], $v[4]];
+        }, $this->trimData());
+    }
+
+    public function trimData()
+    {
+        return [
+            //["str", "chars", "trim", "ltrim", "rtrim"]
+            ["  abc  ", null, "abc", "abc  ", "  abc"],
+            ["abcxd", "xy", "abcxd", "abcxd", "abcxd"],
+            ["yyabcxdxyxyxy", "xy", "abcxd", "abcxdxyxyxy", "yyabcxd"],
+            ["ĂAAAĂAAAĂ", "ĂA", "", "", ""],
+            ["ĂAAAxĂyAAAĂ", "ĂA", "xĂy", "xĂyAAAĂ", "ĂAAAxĂy"],
+        ];
     }
 
     public function testReverse()
     {
-        $this->assertEquals("fedcba", (string) wstring::from("abcdef")->reverse());
+        $this->assertEquals("ZzȚțȘșÎîÂâĂă", (string)wstr::from("ăĂâÂîÎșȘțȚzZ")->reverse());
     }
 
     public function testRepeat()
     {
-        $this->assertEquals("abcabc", (string) wstring::from("abc")->repeat());
-        $this->assertEquals("abcabcabcabc", (string) wstring::from("abc")->repeat(3));
-        $this->assertEquals("ăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢăĂâÂîÎşŞţŢ", (string) wstring::from("ăĂâÂîÎşŞţŢ")->repeat(2));
+        $this->assertEquals("abcabcabc", (string)wstr::from("abc")->repeat(3));
     }
 
-    public function testRepeatTimesShouldBeChangedIntoOne()
+    /**
+     * @dataProvider replaceDataProvider
+     */
+    public function testReplace(string $str, string $subject, string $replace, string $result, int $offset = 0, bool $ignoreCase = false)
     {
-        $this->assertEquals("abcabc", (string) wstring::from("abc")->repeat(-1));
+        $this->assertEquals($result, (string)wstr::from($str)->replace($subject, $replace, $offset, $ignoreCase));
     }
 
-    public function testRemove()
+    public function replaceDataProvider()
     {
-        $this->assertEquals("ÂîÎşŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(0, 3));
-        $this->assertEquals("ăĂâÂîÎşŞţ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(9, 3));
-        $this->assertEquals("ăĂâÂŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(4, 3));
+        return [
+            ["abcdabcd", "bc", "", "adabcd"],
+            ["abcdabcd", "bc", "x", "axdabcd"],
+            ["abcdabcd", "bc", "xy", "axydabcd"],
+            ["abcdabcd", "bc", "xyz", "axyzdabcd"],
+            ["abcdabcd", "bc", "XYZ", "abcdaXYZd", 3],
+            ["abcdabcd", "bc", "XYZ", "abcdaXYZd", -4],
+            ["abcdabcd", "bc", "XYZ", "abcdabcd", 6],
+
+            ["aBcAbC", "bC", "XX", "aBcAXX"],
+            ["aBcAbC", "bC", "XX", "aXXAbC", 0, true],
+            ["aBcAbC", "bC", "XX", "aBcAXX", 2, true],
+            ["aBcAbC", "bC", "XX", "aBcAXX", -2, true],
+            ["aBcAbC", "bC", "XX", "aBcAbC", -1, true],
+
+            ["ăĂâÂîÎșȘțȚzZ", "Î", "X", "ăĂâÂîXșȘțȚzZ"],
+            ["ăĂâÂîÎșȘțȚzZ", "Î", "X", "ăĂâÂXÎșȘțȚzZ", 0, true],
+        ];
     }
 
-    public function testRemoveIndexLengthShouldBeChangedIntoZero()
+    /**
+     * @dataProvider replaceAllDataProvider
+     */
+    public function testReplaceAll(string $str, string $subject, string $replace, string $result, bool $ignoreCase = false, int $offset = 0)
     {
-        $this->assertEquals("ăĂâÂîÎşŞţŢ", (string) wstring::from('ăĂâÂîÎşŞţŢ')->remove(-1, -1));
+        $this->assertEquals($result, (string)wstr::from($str)->replaceAll($subject, $replace, $ignoreCase, $offset));
     }
 
-    public function testPadLeft()
+    public function replaceAllDataProvider()
     {
-        $this->assertEquals("xxabc", (string) wstring::from("abc")->padLeft(5, 'x'));
-        $this->assertEquals("xyabc", (string) wstring::from("abc")->padLeft(5, 'xyz'));
-        $this->assertEquals("xyzxabc", (string) wstring::from("abc")->padLeft(7, 'xyz'));
-        $this->assertEquals("", (string) wstring::from("abc")->padLeft(0, 'x'));
-        $this->assertEquals("", (string) wstring::from("abc")->padLeft(-1, 'x'));
-        $this->assertEquals("c", (string) wstring::from("abc")->padLeft(1, 'x'));
+        return [
+            ["AabcaAa", "a", "X", "AXbcXAX"],
+            ["AabcaAa", "a", "X", "XXbcXXX", true],
+            ["aaa", "a", "X", "aXX", false, 1],
+            ["aaa", "a", "X", "aaX", false, -1],
+            ["Aaa", "a", "", "A"],
+
+            ["ăĂâÂîÎșȘțȚzZ", "Î", "X", "ăĂâÂîXșȘțȚzZ"],
+            ["ăĂâÂîÎșȘțȚzZ", "Î", "X", "ăĂâÂXXșȘțȚzZ", true],
+
+            ["aîÎb", "Îî", "X", "aîÎb"],
+            ["aîÎb", "Îî", "X", "aXb", true],
+            ["aîÎb", "Îî", "X", "aîÎb", true, 2],
+        ];
     }
 
-    public function testPadLeftEqualWithStringLength()
+    /**
+     * @dataProvider splitDataProvider
+     */
+    public function testSplit(string $str, string $delimiter, array $result, bool $ignoreCase = false)
     {
-        $this->assertInstanceOf("Opis\String\UnicodeString", wstring::from("xxabc")->padLeft(5, 'x'));
+        $this->assertEquals($result, array_map('strval', wstr::from($str)->split($delimiter, $ignoreCase)));
     }
 
-    public function testPadLeftWithEmptyPad()
+    public function splitDataProvider()
     {
-        $this->assertEquals(" xxabc", (string) wstring::from("xxabc")->padLeft(6, ''));
+        return [
+            ["ȚabcȘ", "", ["Ț", "a", "b", "c", "Ș"]],
+            ["a-b-c", "-", ["a", "b", "c"]],
+            ["aXbxcXd", "x", ["aXb", "cXd"]],
+            ["aXbxcXd", "x", ["a", "b", "c", "d"], true],
+
+            ["a", "a", ["", ""]],
+            ["ab", "a", ["", "b"]],
+            ["ba", "a", ["b", ""]],
+            ["aba", "a", ["", "b", ""]],
+            ["aaa", "a", ["", "", "", ""]],
+
+            ["xîÎx", "Îî", ["xîÎx"]],
+            ["xîÎx", "Îî", ["x", "x"], true],
+        ];
     }
 
-    public function testRight()
+    /**
+     * @dataProvider substringDataProvider
+     */
+    public function testSubstring(string $str, int $offset, $length, string $result)
     {
-        $this->assertEquals("abcxx", (string) wstring::from("abc")->padRight(5, 'x'));
-        $this->assertEquals("abcxy", (string) wstring::from("abc")->padRight(5, 'xyz'));
-        $this->assertEquals("abcxyzx", (string) wstring::from("abc")->padRight(7, 'xyz'));
-        $this->assertEquals("", (string) wstring::from("abc")->padRight(0, 'x'));
-        $this->assertEquals("", (string) wstring::from("abc")->padRight(-1, 'x'));
-        $this->assertEquals("a", (string) wstring::from("abc")->padRight(1, 'x'));
+        $this->assertEquals($result, (string)wstr::from($str)->substring($offset, $length));
     }
 
-    public function testSplit()
+    public function substringDataProvider()
     {
-        $map = function($value){
-            return (string) $value;
-        };
-        $split = function($text, $char = '') use($map){
-            return array_map($map, wstring::from($text)->split($char));
-        };
+        return [
+            ["0123456789", 0, null, "0123456789"],
+            ["0123456789", 4, null, "456789"],
+            ["0123456789", 4, 3, "456"],
+            ["abcdef", -1, null, "f"],
+            ["abcdef", -2, null, "ef"],
+            ["abcdef", -3, 1, "d"],
+            ["abcdef", 0, -1, "abcde"],
+            ["abcdef", 2, -1, "cde"],
+            ["abcdef", 4, -4, ""],
+            ["abcdef", -3, -1, "de"],
 
-        $this->assertEquals(array('a', 'b', 'c'), $split('a|b|c', '|'));
-        $this->assertEquals(array('', 'a', 'b', 'c'), $split('|a|b|c', '|'));
-        $this->assertEquals(array('', 'a', 'b', 'c', '', ''), $split('|a|b|c||', '|'));
-        $this->assertEquals(array('|a|b|c', ''), $split('|a|b|c||', '||'));
-        $this->assertEquals(array('a|b|c'), $split('a|b|c', '#'));
-        $this->assertEquals(array('a', 'b', 'c'), $split('abc'));
+            ["ăĂâÂîÎșȘțȚ", 2, 4, "âÂîÎ"],
+        ];
     }
 
-    public function testSubstring()
+    /**
+     * @dataProvider padDataProvider
+     */
+    public function testPad(string $str, int $size, $char, string $left, string $right)
     {
-        $this->assertEquals('abc', wstring::from('abcdef')->substring(0, 3));
-        $this->assertEquals('def', wstring::from('abcdef')->substring(3, 3));
-        $this->assertEquals('def', wstring::from('abcdef')->substring(3));
-        $this->assertEquals('abcdef', wstring::from('abcdef')->substring(0));
+        $str = wstr::from($str);
+
+        $this->assertEquals($left, (string)$str->pad(-$size, $char));
+        $this->assertEquals($right, (string)$str->pad($size, $char));
+
+        $this->assertEquals($left, (string)$str->padLeft($size, $char));
+
+        $this->assertEquals($right, (string)$str->padRight($size, $char));
     }
+
+    public function padDataProvider()
+    {
+        return [
+            ["abc", 6, "x", "xxxabc", "abcxxx"],
+            ["abc", 3, "x", "abc", "abc"],
+            ["abc", 5, "xy", "xxabc", "abcxx"], // only first char is taken
+
+            ["123", 5, "0", "00123", "12300"],
+            ["", 3, "Ț", "ȚȚȚ", "ȚȚȚ"],
+        ];
+    }
+
+    /**
+     * @dataProvider indexAccessDataProvider
+     */
+    public function testIndexAccess(string $str, int $index, int $codePoint, string $char)
+    {
+        $str = wstr::from($str);
+
+        $this->assertEquals($codePoint, $str->codePointAt($index));
+        $this->assertEquals($char, $str->charAt($index));
+
+        if ($codePoint === -1) {
+            try {
+                $str($index);
+                $this->assertTrue(false, "Invalid code point index");
+            } catch (OutOfBoundsException $e) {
+                $this->assertTrue(true);
+            }
+        } else {
+            $this->assertEquals($codePoint, $str($index));
+        }
+
+        if ($char === '') {
+            $this->assertFalse(isset($str[$index]));
+            try {
+                $str[$index];
+                $this->assertTrue(false, "Invalid char index");
+            } catch (OutOfBoundsException $e) {
+                $this->assertTrue(true);
+            }
+        } else {
+            $this->assertTrue(isset($str[$index]));
+            $this->assertEquals($char, $str[$index]);
+        }
+    }
+
+    public function indexAccessDataProvider()
+    {
+        return [
+            ["abcd", 1, 0x62, "b"],
+            ["abcd", -2, 0x63, "c"],
+            ["abcd", 5, -1, ""],
+            ["abcd", -6, -1, ""],
+
+            ["ăĂâÂîÎșȘțȚ", 0, 0x103, "ă"],
+            ["ăĂâÂîÎșȘțȚ", 4, 0xEE, "î"],
+            ["ăĂâÂîÎșȘțȚ", -4, 0x219, "ș"],
+            ["ăĂâÂîÎșȘțȚ", -1, 0x21A, "Ț"],
+        ];
+    }
+
+    public function testArrayLike()
+    {
+        $str = wstr::from("abc");
+        $this->assertEquals(3, count($str));
+
+
+        $str->isLowerCase(); // just build cache
+        $str[1] = "Ș";
+
+        $this->assertEquals("aȘc", (string)$str);
+        $this->assertFalse($str->isLowerCase()); // check if cache is rebuild
+
+        $str[-1] = "Ț";
+        $this->assertEquals("aȘȚ", (string)$str);
+
+        // only first char
+        $str[0] = "Îabc";
+        $this->assertEquals("ÎȘȚ", (string)$str);
+
+        // no change
+        $str[1] = "";
+        $this->assertEquals("ÎȘȚ", (string)$str);
+
+        // cannot unset
+        $this->expectException(RuntimeException::class);
+        unset($str[1]);
+    }
+
 
     public function testIsCase()
     {
-        $this->assertTrue(wstring::from('abcd')->isLowerCase());
-        $this->assertFalse(wstring::from('abCd')->isLowerCase());
-        $this->assertTrue(wstring::from('ABCD')->isUpperCase());
-        $this->assertFalse(wstring::from('ABcD')->isUpperCase());
+        $this->assertTrue(wstr::from('abcd')->isLowerCase());
+        $this->assertFalse(wstr::from('abCd')->isLowerCase());
+        $this->assertTrue(wstr::from('ABCD')->isUpperCase());
+        $this->assertFalse(wstr::from('ABcD')->isUpperCase());
+
+        $this->assertTrue(wstr::from('țș@îâ#ă')->isLowerCase());
+        $this->assertTrue(wstr::from('ȚȘ@ÎÂ#Ă')->isUpperCase());
+
+        $this->assertFalse(wstr::from('Țș@îâ#ă')->isLowerCase());
+        $this->assertFalse(wstr::from('țȘ@ÎÂ#Ă')->isUpperCase());
+
     }
 
     public function testToCase()
     {
-        $this->assertEquals('ABC', wstring::from('abc')->toUpper());
-        $this->assertEquals('ABC', wstring::from('aBc')->toUpper());
-        $this->assertEquals('abc', wstring::from('ABC')->toLower());
-        $this->assertEquals('abc', wstring::from('AbC')->toLower());
-    }
+        $this->assertEquals('ABC', (string)wstr::from('abc')->toUpper());
+        $this->assertEquals('ABC', (string)wstr::from('aBc')->toUpper());
+        $this->assertEquals('ȚȘ@ÎÂ#Ă', (string)wstr::from('țș@îâ#ă')->toUpper());
 
-    public function testToLowerWithIsLowerCache()
-    {
-        $wstr = new wstring(array('UTF-8'), array('abc'));
-        $wstr->isLowerCase();
-        $this->assertInstanceOf("Opis\String\UnicodeString", $wstr->toLower());
-    }
-
-    public function testToUpperWithIsUpperCache()
-    {
-        $wstr = new wstring(array('UTF-8'), array('abc'));
-        $wstr->isUpperCase();
-        $this->assertInstanceOf("Opis\String\UnicodeString", $wstr->toUpper());
-    }
-
-    public function testToAscii()
-    {
-        $this->assertEquals("aAaAiIsStT", wstring::from("ăĂâÂîÎşŞţŢ")->toAscii());
-    }
-
-    public function testToAsciiWithIsAsciiCache()
-    {
-        $wstr = new wstring(array('UTF-8'), array('abc'));
-        $wstr->isAscii();
-        $this->assertInstanceOf("Opis\String\UnicodeString", $wstr->toAscii());
+        $this->assertEquals('abc', (string)wstr::from('ABC')->toLower());
+        $this->assertEquals('abc', (string)wstr::from('AbC')->toLower());
+        $this->assertEquals('țș@îâ#ă', (string)wstr::from('ȚȘ@ÎÂ#Ă')->toLower());
     }
 
     public function testIsAscii()
     {
-        $this->assertTrue(wstring::from('abcde')->isAscii());
-        $this->assertFalse(wstring::from('abcîÎşa')->isAscii());
-    }
-
-    public function testIsAsciiWithCache()
-    {
-        $wstr = new wstring(array('UTF-8'), array('abc'));
-        $wstr->isAscii();
-        $this->assertTrue($wstr->isAscii());
-    }
-
-    public function testStringWithExistedCharacter()
-    {
-        $wstr = new wstring(array('abcd'), array('bcd'));
-        $this->assertTrue(isset($wstr[0]));
-    }
-
-    public function testStringWithChars()
-    {
-        $wstr = new wstring(array('abcd'), array('bcd'));
-        $this->assertEquals(array('bcd'), $wstr->chars());
-    }
-
-    public function testStringWithCodePoints()
-    {
-        $wstr = new wstring(array('abcd'), array('bcd'));
-        $this->assertEquals(array('abcd'), $wstr->codePoints());
-    }
-
-    public function testStringOffsetChar()
-    {
-        $wstr = new wstring(array('abcd'), array('bcd'));
-        $this->assertEquals('abcd', $wstr(0));
+        $this->assertTrue(wstr::from("abc")->isAscii());
+        $this->assertFalse(wstr::from("abcț")->isAscii());
     }
 
     /**
-     * @expectedException        \Exception
-     * @expectedExceptionMessage Invalid operation
+     * @dataProvider toAsciiDataProvider
      */
-    public function testSetStringShouldReturnInvalidOperation()
+    public function testToAscii(string $str, string $result)
     {
-        $wstr = new wstring(array('abcd'), array('bcd'));
-        $wstr[] = 'a';
+        $this->assertEquals($result, (string)wstr::from($str)->toAscii());
     }
 
-    /**
-     * @expectedException        \Exception
-     * @expectedExceptionMessage Invalid operation
-     */
-    public function testUnsetStringShouldReturnInvalidOperation()
+    public function toAsciiDataProvider()
     {
-        $wstr = new wstring(array('abcd'), array('bcd'));
-        unset($wstr[0]);
+        return [
+            ["ăĂâÂîÎșȘțȚ", "aAaAiIsStT"],
+        ];
     }
-
-    /**
-     * @expectedException        \Exception
-     * @expectedExceptionMessage Could not convert string from 'error_encoding' encoding to UTF-8 encoding
-     */
-    public function testFromStringWithInvalidEncoding()
-    {
-        $wstr = wstring::from('abcd', 'error_encoding');
-    }
-
-    public function testFromStringWithE0Character()
-    {
-        $this->assertEquals("\xE0\xE0\xE0", (string) wstring::from("\xE0\xE0\xE0")->replace("E", "x"));
-    }
-
-    public function testFromStringWithF0Character()
-    {
-        $this->assertEquals("\xF0\xF0\xF0\xF0", (string) wstring::from("\xF0\xF0\xF0\xF0")->replace("F", "x"));
-    }
-
-    /**
-     * @expectedException        \Exception
-     * @expectedExceptionMessage Invalid UTF-8 string
-     */
-    public function testFromStringWithInvalidUtf8String()
-    {
-        wstring::from("\xA0\xA0\xA0\xA0");
-    }
-
 }
