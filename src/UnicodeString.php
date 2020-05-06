@@ -23,7 +23,6 @@ use Countable, ArrayAccess;
 use Serializable, JsonSerializable;
 use Opis\String\Exception\{
     UnicodeException,
-    InvalidCharException,
     InvalidStringException,
     InvalidCodePointException
 };
@@ -1125,27 +1124,6 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
     }
 
     /**
-     * Creates an unicode string instance from chars
-     * @param string[] $chars
-     * @param int $mode
-     * @return static
-     */
-    public static function fromChars(array $chars, int $mode = self::KEEP_CASE): self
-    {
-        return new static(self::getCodePointsFromChars($chars, $mode));
-    }
-
-    /**
-     * Converts the char to corresponding code point
-     * @param string $char
-     * @return int Code point or -1 if char is invalid
-     */
-    public static function getCodePointFromChar(string $char): int
-    {
-        return self::getNextCodePoint($char, strlen($char));
-    }
-
-    /**
      * Converts the code point to corresponding char
      * @param int $code
      * @return string The char or an empty string if code point is invalid
@@ -1204,84 +1182,112 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
      */
     public static function getCodePointsFromString(string $str, int $mode = self::KEEP_CASE): array
     {
-        $i = 0;
-        $codes = [];
-        $used_len = 0;
-        $length = strlen($str);
+        // 0x00-0x7F
+        // 0xC2-0xDF	0x80-0xBF
+        // 0xE0-0xE0	0xA0-0xBF	0x80-0xBF
+        // 0xE1-0xEC	0x80-0xBF	0x80-0xBF
+        // 0xED-0xED	0x80-0x9F	0x80-0xBF
+        // 0xEE-0xEF	0x80-0xBF	0x80-0xBF
+        // 0xF0-0xF0	0x90-0xBF	0x80-0xBF	0x80-0xBF
+        // 0xF1-0xF3	0x80-0xBF	0x80-0xBF	0x80-0xBF
+        // 0xF4-0xF4	0x80-0x8F	0x80-0xBF	0x80-0xBF
 
-        if ($mode === self::KEEP_CASE) {
-            while ($i < $length) {
-                $code = self::getNextCodePoint($str, $length, $i, $used_len);
-                if ($code >= 0) {
-                    $codes[] = $code;
-                    $i += $used_len;
-                } else {
-                    throw new InvalidStringException($str, $i + $used_len - 1);
-                }
+        $codes = [];
+        $length = strlen($str);
+        $mode = self::getMapByMode($mode);
+
+        $i = 0;
+        while ($i < $length) {
+            $ord0 = ord($str[$i++]);
+
+            if ($ord0 < 0x80) {
+                $codes[] = $mode[$ord0] ?? $ord0;
+                continue;
             }
-        } else {
-            $mode = self::getMapByMode($mode);
-            while ($i < $length) {
-                $code = self::getNextCodePoint($str, $length, $i, $used_len);
-                if ($code >= 0) {
-                    $codes[] = $mode[$code] ?? $code;
-                    $i += $used_len;
-                } else {
-                    throw new InvalidStringException($str, $i + $used_len - 1);
-                }
+
+            if ($i === $length || $ord0 < 0xC2 || $ord0 > 0xF4) {
+                throw new InvalidStringException($str, $i - 1);
             }
+
+            $ord1 = ord($str[$i++]);
+
+            if ($ord0 < 0xE0) {
+                if ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 1);
+                }
+
+                $ord1 = ($ord0 - 0xC0) * 64 + $ord1 - 0x80;
+                $codes[] = $mode[$ord1] ?? $ord1;
+
+                continue;
+            }
+
+            if ($i === $length) {
+                throw new InvalidStringException($str, $i - 1);
+            }
+
+            $ord2 = ord($str[$i++]);
+
+            if ($ord0 < 0xF0) {
+                if ($ord0 === 0xE0) {
+                    if ($ord1 < 0xA0 || $ord1 >= 0xC0) {
+                        throw new InvalidStringException($str, $i - 2);
+                    }
+                } elseif ($ord0 === 0xED) {
+                    if ($ord1 < 0x80 || $ord1 >= 0xA0) {
+                        throw new InvalidStringException($str, $i - 2);
+                    }
+                } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 2);
+                }
+
+                if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 1);
+                }
+
+                $ord2 = ($ord0 - 0xE0) * 0x1000 + ($ord1 - 0x80) * 64 + $ord2 - 0x80;
+                $codes[] = $mode[$ord2] ?? $ord2;
+
+                continue;
+            }
+
+            if ($i === $length) {
+                throw new InvalidStringException($str, $i - 1);
+            }
+
+            $ord3 = ord($str[$i++]);
+
+            if ($ord0 < 0xF5) {
+                if ($ord0 === 0xF0) {
+                    if ($ord1 < 0x90 || $ord1 >= 0xC0) {
+                        throw new InvalidStringException($str, $i - 3);
+                    }
+                } elseif ($ord0 === 0xF4) {
+                    if ($ord1 < 0x80 || $ord1 >= 0x90) {
+                        throw new InvalidStringException($str, $i - 3);
+                    }
+                } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 3);
+                }
+
+                if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 2);
+                }
+
+                if ($ord3 < 0x80 || $ord3 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 1);
+                }
+
+                $ord3 = ($ord0 - 0xF0) * 0x40000 + ($ord1 - 0x80) * 0x1000 + ($ord2 - 0x80) * 64 + $ord3 - 0x80;
+                $codes[] = $mode[$ord3] ?? $ord3;
+
+                continue;
+            }
+
+            throw new InvalidStringException($str, $i - 1);
         }
 
         return $codes;
-    }
-
-    /**
-     * Convert string to a char array
-     * @param string $str
-     * @return array
-     * @throws InvalidStringException
-     */
-    public static function getCharsFromString(string $str): array
-    {
-        $i = 0;
-        $chars = [];
-        $used_len = 0;
-        $length = strlen($str);
-
-        while ($i < $length) {
-            $char = self::getNextChar($str, $length, $i, $used_len);
-            if ($char !== '') {
-                $chars[] = $char;
-                $i += $used_len;
-            } else {
-                throw new InvalidStringException($str, $i + $used_len - 1);
-            }
-        }
-
-        return $chars;
-    }
-
-    /**
-     * Converts each char to a code point
-     * @param array $chars
-     * @param int $mode
-     * @return array
-     * @throws InvalidCharException
-     */
-    public static function getCodePointsFromChars(array $chars, int $mode = self::KEEP_CASE): array
-    {
-        $mode = self::getMapByMode($mode);
-
-        foreach ($chars as &$char) {
-            $code = self::getCodePointFromChar($char);
-            if ($code === -1) {
-                throw new InvalidCharException($char);
-            } else {
-                $char = $mode[$code] ?? $code;
-            }
-        }
-
-        return $chars;
     }
 
     /**
@@ -1317,16 +1323,6 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
     public static function getStringFromCodePoints(array $codes, int $mode = self::KEEP_CASE): string
     {
         return implode('', self::getCharsFromCodePoints($codes, $mode));
-    }
-
-    /**
-     * Concatenates all chars
-     * @param array $chars
-     * @return string
-     */
-    public static function getStringFromChars(array $chars): string
-    {
-        return implode('', $chars);
     }
 
     /**
@@ -1368,268 +1364,6 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
     }
 
     /**
-     * Checks if a char is valid
-     * @param string $char
-     * @return bool
-     */
-    public static function isValidChar(string $char): bool
-    {
-        if ($char === '') {
-            return false;
-        }
-
-        $length = strlen($char);
-
-        if ($length > 4) {
-            return false;
-        }
-
-        if (self::getNextCodePoint($char, $length, 0, $used_len) >= 0) {
-            return $length === $used_len;
-        }
-
-        return false;
-    }
-
-    /**
-     * Internal function used to get next code point from string
-     * @param string $char
-     * @param int $length
-     * @param int $offset
-     * @param int|null $used_len
-     * @return int
-     */
-    protected static function getNextCodePoint(string &$char, int $length, int $offset = 0, int &$used_len = null): int
-    {
-        $used_len = 0;
-        $length -= $offset;
-
-        if ($length < 1) {
-            return -1;
-        }
-
-        // 0x00-0x7F
-        $used_len = 1;
-        $ord0 = ord($char[$offset]);
-
-        if ($ord0 < 0x80) {
-            return $ord0;
-        } elseif ($length < 2) {
-            return -1;
-        }
-
-        // 0xC2-0xDF	0x80-0xBF
-
-        if ($ord0 < 0xC2) {
-            return -1;
-        }
-
-        $used_len = 2;
-        $ord1 = ord($char[$offset + 1]);
-
-        if ($ord0 < 0xE0) {
-            if ($ord1 < 0x80 || $ord1 >= 0xC0) {
-                return -1;
-            }
-
-            return ($ord0 - 0xC0) * 64 + $ord1 - 0x80;
-        } elseif ($length < 3) {
-            return -1;
-        }
-
-        // 0xE0-0xE0	0xA0-0xBF	0x80-0xBF
-        // 0xE1-0xEC	0x80-0xBF	0x80-0xBF
-        // 0xED-0xED	0x80-0x9F	0x80-0xBF
-        // 0xEE-0xEF	0x80-0xBF	0x80-0xBF
-
-        $used_len = 3;
-        $ord2 = ord($char[$offset + 2]);
-
-        if ($ord0 < 0xF0) {
-            if ($ord0 === 0xE0) {
-                if ($ord1 < 0xA0 || $ord1 >= 0xC0) {
-                    $used_len = 2;
-                    return -1;
-                }
-            } elseif ($ord0 === 0xED) {
-                if ($ord1 < 0x80 || $ord1 >= 0xA0) {
-                    $used_len = 2;
-                    return -1;
-                }
-            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
-                $used_len = 2;
-                return -1;
-            }
-
-            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
-                return -1;
-            }
-
-            return ($ord0 - 0xE0) * 0x1000 + ($ord1 - 0x80) * 64 + $ord2 - 0x80;
-        } elseif ($length < 4) {
-            return -1;
-        }
-
-        // 0xF0-0xF0	0x90-0xBF	0x80-0xBF	0x80-0xBF
-        // 0xF1-0xF3	0x80-0xBF	0x80-0xBF	0x80-0xBF
-        // 0xF4-0xF4	0x80-0x8F	0x80-0xBF	0x80-0xBF
-
-        $used_len = 4;
-        $ord3 = ord($char[$offset + 3]);
-
-        if ($ord0 < 0xF5) {
-            if ($ord0 === 0xF0) {
-                if ($ord1 < 0x90 || $ord1 >= 0xC0) {
-                    $used_len = 2;
-                    return -1;
-                }
-            } elseif ($ord0 === 0xF4) {
-                if ($ord1 < 0x80 || $ord1 >= 0x90) {
-                    $used_len = 2;
-                    return -1;
-                }
-            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
-                $used_len = 2;
-                return -1;
-            }
-
-            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
-                $used_len = 3;
-                return -1;
-            }
-
-            if ($ord3 < 0x80 || $ord3 >= 0xC0) {
-                return -1;
-            }
-
-            return ($ord0 - 0xF0) * 0x40000 + ($ord1 - 0x80) * 0x1000 + ($ord2 - 0x80) * 64 + $ord3 - 0x80;
-        }
-
-        $used_len = 1;
-
-        return -1;
-    }
-
-    /**
-     * Internal function used to get next char from string
-     * @param string $char
-     * @param int $length
-     * @param int $offset
-     * @param int|null $used_len
-     * @return string
-     */
-    protected static function getNextChar(string &$char, int $length, int $offset = 0, int &$used_len = null): string
-    {
-        $used_len = 0;
-        $length -= $offset;
-
-        if ($length < 1) {
-            return '';
-        }
-
-        // 0x00-0x7F
-        $used_len = 1;
-        $ord0 = ord($char[$offset]);
-
-        if ($ord0 < 0x80) {
-            return $char[$offset];
-        } elseif ($length < 2) {
-            return '';
-        }
-
-        // 0xC2-0xDF	0x80-0xBF
-
-        if ($ord0 < 0xC2) {
-            return '';
-        }
-
-        $used_len = 2;
-        $ord1 = ord($char[$offset + 1]);
-
-        if ($ord0 < 0xE0) {
-            if ($ord1 < 0x80 || $ord1 >= 0xC0) {
-                return '';
-            }
-
-            return $char[$offset] . $char[$offset + 1];
-        } elseif ($length < 3) {
-            return '';
-        }
-
-        // 0xE0-0xE0	0xA0-0xBF	0x80-0xBF
-        // 0xE1-0xEC	0x80-0xBF	0x80-0xBF
-        // 0xED-0xED	0x80-0x9F	0x80-0xBF
-        // 0xEE-0xEF	0x80-0xBF	0x80-0xBF
-
-        $used_len = 3;
-        $ord2 = ord($char[$offset + 2]);
-
-        if ($ord0 < 0xF0) {
-            if ($ord0 === 0xE0) {
-                if ($ord1 < 0xA0 || $ord1 >= 0xC0) {
-                    $used_len = 2;
-                    return '';
-                }
-            } elseif ($ord0 === 0xED) {
-                if ($ord1 < 0x80 || $ord1 >= 0xA0) {
-                    $used_len = 2;
-                    return '';
-                }
-            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
-                $used_len = 2;
-                return '';
-            }
-
-            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
-                return '';
-            }
-
-            return $char[$offset] . $char[$offset + 1] . $char[$offset + 2];
-        } elseif ($length < 4) {
-            return '';
-        }
-
-        // 0xF0-0xF0	0x90-0xBF	0x80-0xBF	0x80-0xBF
-        // 0xF1-0xF3	0x80-0xBF	0x80-0xBF	0x80-0xBF
-        // 0xF4-0xF4	0x80-0x8F	0x80-0xBF	0x80-0xBF
-
-        $used_len = 4;
-        $ord3 = ord($char[$offset + 3]);
-
-        if ($ord0 < 0xF5) {
-            if ($ord0 === 0xF0) {
-                if ($ord1 < 0x90 || $ord1 >= 0xC0) {
-                    $used_len = 2;
-                    return '';
-                }
-            } elseif ($ord0 === 0xF4) {
-                if ($ord1 < 0x80 || $ord1 >= 0x90) {
-                    $used_len = 2;
-                    return '';
-                }
-            } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
-                $used_len = 2;
-                return '';
-            }
-
-            if ($ord2 < 0x80 || $ord2 >= 0xC0) {
-                $used_len = 3;
-                return '';
-            }
-
-            if ($ord3 < 0x80 || $ord3 >= 0xC0) {
-                return '';
-            }
-
-            return $char[$offset] . $char[$offset + 1] . $char[$offset + 2] . $char[$offset + 3];
-        }
-
-        $used_len = 1;
-
-        return '';
-    }
-
-    /**
      * @param string|self|int[]|string[] $text
      * @param int $mode
      * @return array
@@ -1644,10 +1378,9 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
             return self::getCodePointsFromString($text, $mode);
         }
 
-        if (is_array($text) && $text) {
-            return is_int($text[0])
-                ? self::getMappedCodePoints($text, $mode)
-                : self::getCodePointsFromChars($text, $mode);
+        if ($text && is_array($text) && is_int($text[0])) {
+            // assume code point array
+            return self::getMappedCodePoints($text, $mode);
         }
 
         return [];
@@ -1672,8 +1405,10 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
         }
 
         if (is_string($text)) {
-            $text = self::getNextCodePoint($text, strlen($text));
-            return $text === -1 ? $invalid : $text;
+            if (isset($text[4])) {
+                $text = substr($text, 0, 4);
+            }
+            return self::getCodePointsFromString($text)[0] ?? $invalid;
         }
 
         if (is_int($text)) {
