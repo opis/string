@@ -922,7 +922,7 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
     public function __toString(): string
     {
         if ($this->str === null) {
-            $this->str = implode('', $this->chars());
+            $this->str = self::getStringFromCodePoints($this->codes);
         }
 
         return $this->str;
@@ -1322,7 +1322,47 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
      */
     public static function getStringFromCodePoints(array $codes, int $mode = self::KEEP_CASE): string
     {
-        return implode('', self::getCharsFromCodePoints($codes, $mode));
+        $str = '';
+
+        $mode = self::getMapByMode($mode);
+
+        foreach ($codes as $code) {
+            if (isset($mode[$code])) {
+                $code = $mode[$code];
+            }
+
+            if ($code < 0x80) {
+                $str .= chr($code);
+                continue;
+            }
+
+            if ($code < 0x800) {
+                $str .= chr(($code >> 6) + 0xC0) . chr(($code & 0x3F) + 0x80);
+                continue;
+            }
+
+            if ($code >= 0xD800 && $code <= 0xDFFF) {
+                continue;
+            }
+
+            if ($code <= 0xFFFF) {
+                $str .=
+                    chr(($code >> 12) + 0xE0) .
+                    chr((($code >> 6) & 0x3F) + 0x80) .
+                    chr(($code & 0x3F) + 0x80);
+                continue;
+            }
+
+            if ($code <= 0x10FFFF) {
+                $str .=
+                    chr(($code >> 18) + 0xF0) .
+                    chr((($code >> 12) & 0x3F) + 0x80) .
+                    chr((($code >> 6) & 0x3F) + 0x80) .
+                    chr(($code & 0x3F) + 0x80);
+            }
+        }
+
+        return $str;
     }
 
     /**
