@@ -1380,6 +1380,10 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
 
         $length = strlen($char);
 
+        if ($length > 4) {
+            return false;
+        }
+
         if (self::getNextCodePoint($char, $length, 0, $used_len) >= 0) {
             return $length === $used_len;
         }
