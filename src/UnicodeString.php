@@ -20,14 +20,15 @@ namespace Opis\String;
 use RuntimeException;
 use OutOfBoundsException;
 use Countable, ArrayAccess;
-use Serializable, JsonSerializable;
+use JsonSerializable;
 use Opis\String\Exception\{
     UnicodeException,
     InvalidStringException,
     InvalidCodePointException
 };
 
-class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSerializable {
+final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
+{
     const KEEP_CASE = 0;
 
     const LOWER_CASE = 1;
@@ -41,32 +42,25 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
     /**
      * @var int[]
      */
-    protected $codes;
+    private array $codes;
 
     /**
      * @var string[]|null
      */
-    protected $chars;
+    private ?array $chars = null;
+    private int $length;
+    private ?string $str = null;
+    private ?array $cache = null;
 
     /**
-     * @var int
+     * @var int[][]
      */
-    protected $length = 0;
-
-    /**
-     * @var string|null
-     */
-    protected $str = null;
-
-    /**
-     * @var null|array
-     */
-    protected $cache = null;
+    private static $maps = [];
 
     /**
      * @param int[] $codes
      */
-    protected function __construct(array $codes = [])
+    private function __construct(array $codes = [])
     {
         $this->codes = $codes;
         $this->length = count($codes);
@@ -936,147 +930,21 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
         return $this->__toString();
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function serialize()
+    public function __serialize(): array
     {
-        return $this->__toString();
+        return [
+            'string' => $this->__toString(),
+            'codes' => $this->codes,
+            'length' => $this->length,
+        ];
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function unserialize($serialized)
+    public function __unserialize(array $data): void
     {
-        if (is_string($serialized)) {
-            $this->str = $serialized;
-            $this->codes = self::getCodePointsFromString($serialized);
-            $this->length = count($this->codes);
-        } else {
-            $this->codes = [];
-        }
+        $this->str =$data['string'];
+        $this->codes = $data['codes'];
+        $this->length = $data['length'];
     }
-
-    /**
-     * @param int $mode
-     * @return int[]
-     */
-    protected function getMappedCodes(int $mode): array
-    {
-        if ($mode === self::KEEP_CASE || ($this->cache['i' . $mode] ?? false)) {
-            return $this->codes;
-        }
-
-        $key = 'm' . $mode;
-
-        if (!isset($this->cache[$key])) {
-            $this->cache[$key] = self::getMappedCodePoints($this->codes, $mode);
-        }
-
-        return $this->cache[$key];
-    }
-
-    /**
-     * @param int $mode
-     * @return bool
-     */
-    protected function isCase(int $mode): bool
-    {
-        $key = 'i' . $mode;
-
-        if (!isset($this->cache[$key])) {
-            $list = self::getMapByMode($mode);
-            foreach ($this->codes as $code) {
-                if (isset($list[$code])) {
-                    return $this->cache[$key] = false;
-                }
-            }
-
-            return $this->cache[$key] = true;
-        }
-
-        return $this->cache[$key];
-    }
-
-    /**
-     * @param int[] $codes
-     * @param int[] $text
-     * @param int $offset
-     * @return int
-     */
-    protected function doIndexOf(array $codes, array $text, int $offset = 0): int
-    {
-        $len = count($text);
-
-        for ($i = $offset, $last = count($codes) - $len; $i <= $last; $i++) {
-            $match = true;
-
-            for ($j = 0; $j < $len; $j++) {
-                if ($codes[$i + $j] !== $text[$j]) {
-                    $match = false;
-                    break;
-                }
-            }
-
-            if ($match) {
-                return $i;
-            }
-        }
-
-        return -1;
-    }
-
-    /**
-     * @param string|self|int[]|string[] $mask
-     * @param bool $left
-     * @param bool $right
-     * @return static
-     */
-    protected function doTrim($mask, bool $left, bool $right): self
-    {
-        if ($this->length === 0) {
-            return clone $this;
-        }
-
-        $mask = self::resolveCodePoints($mask);
-
-        if (empty($mask)) {
-            return clone $this;
-        }
-
-        $codes = $this->codes;
-
-        if ($left) {
-            while (in_array($codes[0], $mask, true)) {
-                array_shift($codes);
-                if (empty($codes)) {
-                    return new static();
-                }
-            }
-        }
-
-        if ($right) {
-            $last = count($codes) - 1;
-            while (in_array($codes[$last], $mask, true)) {
-                array_pop($codes);
-                if (--$last < 0) {
-                    return new static();
-                }
-            }
-        }
-
-        return new static($codes);
-    }
-
-    /*****************************************
-     ***** Static methods and properties *****
-     *****************************************/
-
-    /**
-     * @var int[][]
-     */
-    protected static $maps = [];
 
     /**
      * Creates an unicode string instance from raw string
@@ -1404,11 +1272,123 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
     }
 
     /**
+     * @param int $mode
+     * @return int[]
+     */
+    private function getMappedCodes(int $mode): array
+    {
+        if ($mode === self::KEEP_CASE || ($this->cache['i' . $mode] ?? false)) {
+            return $this->codes;
+        }
+
+        $key = 'm' . $mode;
+
+        if (!isset($this->cache[$key])) {
+            $this->cache[$key] = self::getMappedCodePoints($this->codes, $mode);
+        }
+
+        return $this->cache[$key];
+    }
+
+    /**
+     * @param int $mode
+     * @return bool
+     */
+    private function isCase(int $mode): bool
+    {
+        $key = 'i' . $mode;
+
+        if (!isset($this->cache[$key])) {
+            $list = self::getMapByMode($mode);
+            foreach ($this->codes as $code) {
+                if (isset($list[$code])) {
+                    return $this->cache[$key] = false;
+                }
+            }
+
+            return $this->cache[$key] = true;
+        }
+
+        return $this->cache[$key];
+    }
+
+    /**
+     * @param int[] $codes
+     * @param int[] $text
+     * @param int $offset
+     * @return int
+     */
+    private function doIndexOf(array $codes, array $text, int $offset = 0): int
+    {
+        $len = count($text);
+
+        for ($i = $offset, $last = count($codes) - $len; $i <= $last; $i++) {
+            $match = true;
+
+            for ($j = 0; $j < $len; $j++) {
+                if ($codes[$i + $j] !== $text[$j]) {
+                    $match = false;
+                    break;
+                }
+            }
+
+            if ($match) {
+                return $i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * @param string|self|int[]|string[] $mask
+     * @param bool $left
+     * @param bool $right
+     * @return static
+     */
+    private function doTrim($mask, bool $left, bool $right): self
+    {
+        if ($this->length === 0) {
+            return clone $this;
+        }
+
+        $mask = self::resolveCodePoints($mask);
+
+        if (empty($mask)) {
+            return clone $this;
+        }
+
+        $codes = $this->codes;
+
+        if ($left) {
+            while (in_array($codes[0], $mask, true)) {
+                array_shift($codes);
+                if (empty($codes)) {
+                    return new static();
+                }
+            }
+        }
+
+        if ($right) {
+            $last = count($codes) - 1;
+            while (in_array($codes[$last], $mask, true)) {
+                array_pop($codes);
+                if (--$last < 0) {
+                    return new static();
+                }
+            }
+        }
+
+        return new static($codes);
+    }
+
+
+    /**
      * @param string|self|int[]|string[] $text
      * @param int $mode
      * @return array
      */
-    protected static function resolveCodePoints($text, int $mode = self::KEEP_CASE): array
+    private static function resolveCodePoints($text, int $mode = self::KEEP_CASE): array
     {
         if ($text instanceof self) {
             return $text->getMappedCodes($mode);
@@ -1431,7 +1411,7 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
      * @param int $invalid
      * @return int
      */
-    protected static function resolveFirstCodePoint($text, int $invalid = -1): int
+    private static function resolveFirstCodePoint($text, int $invalid = -1): int
     {
         if ($text instanceof self) {
             return $text->length === 0 ? $invalid : $text->codes[0];
@@ -1462,7 +1442,7 @@ class UnicodeString implements Countable, ArrayAccess, Serializable, JsonSeriali
      * @param int $mode
      * @return int[]
      */
-    protected static function getMapByMode(int $mode): array
+    private static function getMapByMode(int $mode): array
     {
         if (isset(self::$maps[$mode])) {
             return self::$maps[$mode];
