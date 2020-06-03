@@ -55,7 +55,7 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     /**
      * @var int[][]
      */
-    private static $maps = [];
+    private static array $maps = [];
 
     /**
      * @param int[] $codes
