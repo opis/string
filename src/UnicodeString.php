@@ -933,17 +933,15 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     public function __serialize(): array
     {
         return [
-            'string' => $this->__toString(),
-            'codes' => $this->codes,
-            'length' => $this->length,
+            'value' => $this->__toString(),
         ];
     }
 
     public function __unserialize(array $data): void
     {
-        $this->str =$data['string'];
-        $this->codes = $data['codes'];
-        $this->length = $data['length'];
+        $this->str = $data['value'];
+        $this->codes = self::getCodePointsFromString($this->str);
+        $this->length = count($this->codes);
     }
 
     /**
