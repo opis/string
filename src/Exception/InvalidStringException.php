@@ -24,12 +24,12 @@ class InvalidStringException extends UnicodeException
     /**
      * @var string
      */
-    protected $string;
+    protected string $string;
 
     /**
      * @var int
      */
-    protected $offset;
+    protected int $offset;
 
     /**
      * @param string $string

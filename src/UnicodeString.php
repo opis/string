@@ -27,7 +27,7 @@ use Opis\String\Exception\{
     InvalidCodePointException
 };
 
-final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
+class UnicodeString implements Countable, ArrayAccess, JsonSerializable
 {
     const KEEP_CASE = 0;
 
@@ -832,7 +832,7 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     /**
      * @inheritDoc
      */
-    public function offsetExists($offset)
+    public function offsetExists($offset): bool
     {
         // Allow negative index
         if ($offset < 0) {
@@ -845,7 +845,7 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     /**
      * @inheritDoc
      */
-    public function offsetGet($offset)
+    public function offsetGet($offset): string
     {
         if ($offset < 0) {
             if ($offset + $this->length < 0) {
@@ -905,7 +905,7 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     /**
      * @inheritDoc
      */
-    public function count()
+    public function count(): int
     {
         return $this->length;
     }
@@ -925,7 +925,7 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     /**
      * @inheritDoc
      */
-    public function jsonSerialize()
+    public function jsonSerialize(): string
     {
         return $this->__toString();
     }
@@ -1157,6 +1157,122 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     }
 
     /**
+     * @param string $str
+     * @return iterable
+     *
+     * The key represents the current char index
+     * Value is a two element array
+     *  - first element is an integer representing the code point
+     *  - second element is an array of integers (length 1 to 4) representing bytes
+     */
+    public static function walkString(string $str): iterable
+    {
+        $i = 0;
+        $length = strlen($str);
+
+        while ($i < $length) {
+            $index = $i;
+
+            $ord0 = ord($str[$i++]);
+
+            if ($ord0 < 0x80) {
+                yield $index => [
+                    $ord0,
+                    [$ord0]
+                ];
+                continue;
+            }
+
+            if ($i === $length || $ord0 < 0xC2 || $ord0 > 0xF4) {
+                throw new InvalidStringException($str, $i - 1);
+            }
+
+            $ord1 = ord($str[$i++]);
+
+            if ($ord0 < 0xE0) {
+                if ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 1);
+                }
+
+                yield $index => [
+                    ($ord0 - 0xC0) * 64 + $ord1 - 0x80,
+                    [$ord0, $ord1]
+                ];
+
+                continue;
+            }
+
+            if ($i === $length) {
+                throw new InvalidStringException($str, $i - 1);
+            }
+
+            $ord2 = ord($str[$i++]);
+
+            if ($ord0 < 0xF0) {
+                if ($ord0 === 0xE0) {
+                    if ($ord1 < 0xA0 || $ord1 >= 0xC0) {
+                        throw new InvalidStringException($str, $i - 2);
+                    }
+                } elseif ($ord0 === 0xED) {
+                    if ($ord1 < 0x80 || $ord1 >= 0xA0) {
+                        throw new InvalidStringException($str, $i - 2);
+                    }
+                } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 2);
+                }
+
+                if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 1);
+                }
+
+                yield $index => [
+                    ($ord0 - 0xE0) * 0x1000 + ($ord1 - 0x80) * 64 + $ord2 - 0x80,
+                    [$ord0, $ord1, $ord2]
+                ];
+
+                continue;
+            }
+
+            if ($i === $length) {
+                throw new InvalidStringException($str, $i - 1);
+            }
+
+            $ord3 = ord($str[$i++]);
+
+            if ($ord0 < 0xF5) {
+                if ($ord0 === 0xF0) {
+                    if ($ord1 < 0x90 || $ord1 >= 0xC0) {
+                        throw new InvalidStringException($str, $i - 3);
+                    }
+                } elseif ($ord0 === 0xF4) {
+                    if ($ord1 < 0x80 || $ord1 >= 0x90) {
+                        throw new InvalidStringException($str, $i - 3);
+                    }
+                } elseif ($ord1 < 0x80 || $ord1 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 3);
+                }
+
+                if ($ord2 < 0x80 || $ord2 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 2);
+                }
+
+                if ($ord3 < 0x80 || $ord3 >= 0xC0) {
+                    throw new InvalidStringException($str, $i - 1);
+                }
+
+                yield $index => [
+                    ($ord0 - 0xF0) * 0x40000 + ($ord1 - 0x80) * 0x1000 + ($ord2 - 0x80) * 64 + $ord3 - 0x80,
+                    [$ord0, $ord1, $ord2, $ord3]
+                ];
+
+                continue;
+            }
+
+            throw new InvalidStringException($str, $i - 1);
+        }
+    }
+
+    /**
      * Converts each code point to a char
      * @param array $codes
      * @param int $mode
@@ -1177,6 +1293,16 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
         }
 
         return $codes;
+    }
+
+    /**
+     * @param string $str
+     * @param int $mode
+     * @return string[]
+     */
+    public static function getCharsFromString(string $str, int $mode = self::KEEP_CASE): array
+    {
+        return self::getCharsFromCodePoints(self::getCodePointsFromString($str), $mode);
     }
 
     /**
@@ -1463,6 +1589,7 @@ final class UnicodeString implements Countable, ArrayAccess, JsonSerializable
                 return [];
         }
 
+        /** @noinspection PhpIncludeInspection */
         return self::$maps[$mode] = include(__DIR__ . "/../res/{$file}.php");
     }
 }
