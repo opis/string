@@ -468,7 +468,7 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
      * @param int|null $length
      * @return static
      */
-    public function remove(int $offset, int $length = null): self
+    public function remove(int $offset, ?int $length = null): self
     {
         $codes = $this->codes;
 
@@ -657,7 +657,7 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
      * @param int|null $length
      * @return static
      */
-    public function substring(int $start, int $length = null): self
+    public function substring(int $start, ?int $length = null): self
     {
         return new static(array_slice($this->codes, $start, $length));
     }
@@ -952,7 +952,7 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
      * @return static
      * @throws InvalidStringException
      */
-    public static function from(string $string, string $encoding = null, int $mode = self::KEEP_CASE): self
+    public static function from(string $string, ?string $encoding = null, int $mode = self::KEEP_CASE): self
     {
         if ($encoding !== null && strcasecmp($encoding, 'UTF-8') !== 0) {
             if (false === $string = @iconv($encoding, 'UTF-8', $string)) {
