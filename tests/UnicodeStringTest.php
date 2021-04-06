@@ -507,7 +507,7 @@ class UnicodeStringTest extends TestCase
      */
     public function testReplaceAll(string $str, string $subject, string $replace, string $result, bool $ignoreCase = false, int $offset = 0)
     {
-        $this->assertEquals($result, (string)wstr::from($str)->replaceAll($subject, $replace, $ignoreCase, $offset));
+        $this->assertEquals($result, (string)wstr::from($str)->replaceAll($subject, $replace, $offset, $ignoreCase));
     }
 
     public function replaceAllDataProvider()

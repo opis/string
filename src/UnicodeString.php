@@ -581,7 +581,7 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
      * @param int $offset
      * @return static
      */
-    public function replaceAll($subject, $replace, bool $ignoreCase = false, int $offset = 0): self
+    public function replaceAll($subject, $replace, int $offset = 0, bool $ignoreCase = false): self
     {
         if ($offset < 0) {
             $offset += $this->length;
