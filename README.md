@@ -21,7 +21,7 @@ The full documentation for this library can be found [here][documentation].
 
 ## Requirements
 
-* PHP ^7.4|^8.0
+* PHP ^7.4 || ^8.0
 * ext-json
 * ext-iconv
 
@@ -39,7 +39,7 @@ Or you could directly reference it into your `composer.json` file as a dependenc
 ```json
 {
     "require": {
-        "opis/string": "^2020"
+        "opis/string": "^2.0"
     }
 }
 ```

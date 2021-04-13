@@ -1,6 +1,6 @@
 CHANGELOG
 -------------
 
-### v2020, unreleased
+### v2.0.0, 2021.04.13
 
 * The library was fully refactored
