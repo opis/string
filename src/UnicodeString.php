@@ -862,6 +862,7 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     /**
      * @inheritDoc
      */
+    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
         // Allow negative index
@@ -897,6 +898,7 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     /**
      * @inheritDoc
      */
+    #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
     {
         throw new RuntimeException("Invalid operation");
