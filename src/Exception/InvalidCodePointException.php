@@ -30,7 +30,7 @@ class InvalidCodePointException extends UnicodeException
      * @param $codePoint
      * @param Throwable|null $previous
      */
-    public function __construct($codePoint, Throwable $previous = null)
+    public function __construct($codePoint, ?Throwable $previous = null)
     {
         parent::__construct("Invalid code point", 0, $previous);
         $this->codePoint = $codePoint;
