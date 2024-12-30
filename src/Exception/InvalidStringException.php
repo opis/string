@@ -36,7 +36,7 @@ class InvalidStringException extends UnicodeException
      * @param int $offset
      * @param Throwable|null $previous
      */
-    public function __construct(string $string, int $offset = -1, Throwable $previous = null)
+    public function __construct(string $string, int $offset = -1, ?Throwable $previous = null)
     {
         parent::__construct("Invalid UTF-8 string at offset {$offset}", 0, $previous);
         $this->string = $string;
