@@ -1,9 +1,10 @@
 Opis String
 ===========
 [![Tests](https://github.com/opis/string/workflows/Tests/badge.svg)](https://github.com/opis/string/actions)
-[![Latest Stable Version](https://poser.pugx.org/opis/string/version.png)](https://packagist.org/packages/opis/string)
-[![Latest Unstable Version](https://poser.pugx.org/opis/string/v/unstable.png)](https://packagist.org/packages/opis/string)
-[![License](https://poser.pugx.org/opis/string/license.png)](https://packagist.org/packages/opis/string)
+[![Packagist Version](https://img.shields.io/packagist/v/opis/string?label=Version)](https://packagist.org/packages/opis/string)
+[![Packagist Downloads](https://img.shields.io/packagist/dt/opis/string?label=Downloads)](https://packagist.org/packages/opis/string)
+[![Packagist License](https://img.shields.io/packagist/l/opis/string?color=teal&label=License)](https://packagist.org/packages/opis/string)
+
 
 Multibyte strings
 ----------------------------
