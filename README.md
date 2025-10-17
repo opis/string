@@ -28,7 +28,7 @@ The full documentation for this library can be found [here][documentation].
 
 ## Installation
 
-**Opis String** is available on [Packagist] and it can be installed from a
+**Opis String** is available on [Packagist], and it can be installed from a
 command line interface by using [Composer].
 
 ```bash
@@ -40,7 +40,7 @@ Or you could directly reference it into your `composer.json` file as a dependenc
 ```json
 {
     "require": {
-        "opis/string": "^2.0"
+        "opis/string": "^2.1"
     }
 }
 ```

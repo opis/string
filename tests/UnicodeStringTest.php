@@ -106,9 +106,20 @@ class UnicodeStringTest extends TestCase
     {
         $this->assertEquals(0, wstr::from('')->length());
         $this->assertEquals(1, wstr::from(' ')->length());
+        $this->assertEquals(1, wstr::from("\x00")->length());
         $this->assertEquals(5, wstr::from('abcde')->length());
         $this->assertEquals(10, wstr::from('ăĂâÂîÎșȘțȚ')->length());
         $this->assertEquals(15, wstr::from('abcdeăĂâÂîÎșȘțȚ')->length());
+    }
+
+    public function testStaticLength()
+    {
+        $this->assertEquals(0, wstr::getStringLength(''));
+        $this->assertEquals(1, wstr::getStringLength(' '));
+        $this->assertEquals(1, wstr::getStringLength("\x00"));
+        $this->assertEquals(5, wstr::getStringLength('abcde'));
+        $this->assertEquals(10, wstr::getStringLength('ăĂâÂîÎșȘțȚ'));
+        $this->assertEquals(15, wstr::getStringLength('abcdeăĂâÂîÎșȘțȚ'));
     }
 
     public function testIsEmpty()
