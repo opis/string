@@ -23,7 +23,8 @@ use PHPUnit\Framework\TestCase;
 use Opis\String\UnicodeString as wstr;
 use Opis\String\Exception\{
     UnicodeException,
-    InvalidStringException
+    InvalidStringException,
+    InvalidCodePointException
 };
 
 class UnicodeStringTest extends TestCase
@@ -743,5 +744,26 @@ class UnicodeStringTest extends TestCase
         return [
             ["ăĂâÂîÎșȘțȚ", "aAaAiIsStT"],
         ];
+    }
+
+    public function testInvalidOptions()
+    {
+        $cp = [
+            0x61, // a
+            0x74, // t
+            0x74, // t
+            0x61, // a
+            0xD800, // surrogate code point
+            0x63, // c
+            0x6B, // k
+        ];
+        $mode = wstr::KEEP_CASE;
+
+        $this->assertEquals("attack", wstr::getStringFromCodePoints($cp));
+        $this->assertEquals("attack", wstr::getStringFromCodePoints($cp, $mode, wstr::INVALID_IGNORE));
+        $this->assertEquals("atta\u{FFFD}ck", wstr::getStringFromCodePoints($cp, $mode, wstr::INVALID_SUBSTITUTE));
+
+        $this->expectException(InvalidCodePointException::class);
+        wstr::getStringFromCodePoints($cp, $mode, wstr::INVALID_THROW);
     }
 }

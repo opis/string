@@ -40,6 +40,21 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
     const ASCII_CONV = 4;
 
     /**
+     * Ignores the invalid code point
+     */
+    const INVALID_IGNORE = 0;
+
+    /**
+     * Replaces the invalid code point with U+FFFD
+     */
+    const INVALID_SUBSTITUTE = 1;
+
+    /**
+     * Throws InvalidCodePointException on invalid code point
+     */
+    const INVALID_THROW = 2;
+
+    /**
      * @var int[]
      */
     private array $codes;
@@ -1418,12 +1433,13 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
 
     /**
      * Converts all code points to chars and returns the string
-     * Invalid code points are ignored
      * @param array $codes
      * @param int $mode
+     * @param int $invalid By default, invalid code points are ignored, see self::INVALID_*
      * @return string
+     * @throws InvalidCodePointException
      */
-    public static function getStringFromCodePoints(array $codes, int $mode = self::KEEP_CASE): string
+    public static function getStringFromCodePoints(array $codes, int $mode = self::KEEP_CASE, int $invalid = self::INVALID_IGNORE): string
     {
         $str = '';
 
@@ -1445,6 +1461,11 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
             }
 
             if ($code >= 0xD800 && $code <= 0xDFFF) {
+                if ($invalid === self::INVALID_THROW) {
+                    throw new InvalidCodePointException($code);
+                } else if ($invalid === self::INVALID_SUBSTITUTE) {
+                    $str .= "\u{FFFD}";
+                }
                 continue;
             }
 
@@ -1462,6 +1483,13 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
                     chr((($code >> 12) & 0x3F) + 0x80) .
                     chr((($code >> 6) & 0x3F) + 0x80) .
                     chr(($code & 0x3F) + 0x80);
+                continue;
+            }
+
+            if ($invalid === self::INVALID_THROW) {
+                throw new InvalidCodePointException($code);
+            } elseif ($invalid === self::INVALID_SUBSTITUTE) {
+                $str .= "\u{FFFD}";
             }
         }
 
