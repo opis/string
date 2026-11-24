@@ -861,6 +861,8 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
 
     /**
      * @inheritDoc
+     *
+     * @return void
      */
     #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
@@ -897,6 +899,8 @@ class UnicodeString implements Countable, ArrayAccess, JsonSerializable
 
     /**
      * @inheritDoc
+     *
+     * @return void
      */
     #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
